@@ -5,9 +5,10 @@
 import datetime
 import os
 from urllib.parse import urlencode
+import asyncio
 
 from starlette.applications import Starlette
-from starlette.responses import PlainTextResponse, Response
+from starlette.responses import PlainTextResponse, Response, JSONResponse
 from starlette.routing import Mount, Route, WebSocketRoute
 from starlette.staticfiles import StaticFiles
 from starlette.templating import Jinja2Templates
@@ -79,6 +80,14 @@ async def padding(request):
     size = min(50000000, request.path_params["size"])
     return PlainTextResponse("Z" * size)
 
+# Define a new endpoint function for handling POST requests
+async def create_room_post(request):
+    # Assuming you want to echo back the received JSON data
+    data = await request.json()
+    # Modify or process the data as needed
+    response_data = {"received_data": data}
+    return JSONResponse(response_data)
+
 
 async def ws(websocket):
     """
@@ -97,6 +106,9 @@ async def ws(websocket):
     except WebSocketDisconnect:
         pass
 
+# counts = {}
+rooms = {}
+
 
 async def wt(scope: Scope, receive: Receive, send: Send) -> None:
     """
@@ -107,24 +119,62 @@ async def wt(scope: Scope, receive: Receive, send: Send) -> None:
     assert message["type"] == "webtransport.connect"
     await send({"type": "webtransport.accept"})
 
+    id = scope["client"][0] + '-' + str(scope["client"][1])
+    print(id)
+    room_name = None
+    testTog = False
+    # if(id not in counts):
+    #     counts[id] = 0
     # echo back received data
+
     while True:
-        message = await receive()
+
+        print("waiting to receive")
+        if not testTog:
+            message = await receive()
+            print("received", message)
+            decoded = message["data"].decode()
+            decoded_type = decoded[0]
+            if(decoded_type == '0'):
+                room_name = decoded
+                if(room_name not in rooms):
+                    rooms[room_name] = {'count' : 0, 'sends' : []}
+                rooms[room_name]["sends"].append(send)
+                continue
+        if testTog:
+            await asyncio.sleep(0.5)
+            response = (room_name + str(rooms[room_name]["count"])).encode()
+            rooms[room_name]["count"] += 1
+            a = await send({"data": response, "type": "webtransport.datagram.send"})
+            print(a)
+            continue
+        decoded = decoded[1:]
+        response = (decoded + str(rooms[room_name]['count'])).encode()
+        rooms[room_name]['count'] += 1
+        print(response)
         if message["type"] == "webtransport.datagram.receive":
-            await send(
-                {
-                    "data": message["data"],
-                    "type": "webtransport.datagram.send",
-                }
-            )
+            for send in rooms[room_name]["sends"]:
+                asyncio.create_task(send(
+                    {
+                        "data": response,
+                        "type": "webtransport.datagram.send",
+                    }
+                ))
+            # asyncio.create_task(send(
+            #     {
+            #         "data": response,
+            #         "type": "webtransport.datagram.send",
+            #     }
+            # ))
         elif message["type"] == "webtransport.stream.receive":
             await send(
                 {
-                    "data": message["data"],
+                    "data": response,
                     "stream": message["stream"],
                     "type": "webtransport.stream.send",
                 }
             )
+        # testTog = True
 
 
 starlette = Starlette(
@@ -143,4 +193,5 @@ async def app(scope: Scope, receive: Receive, send: Send) -> None:
     if scope["type"] == "webtransport" and scope["path"] == "/wt":
         await wt(scope, receive, send)
     else:
+        print(scope)
         await starlette(scope, receive, send)

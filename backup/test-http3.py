@@ -241,6 +241,7 @@ class WebTransportHandler:
         self.scope = scope
         self.stream_id = stream_id
         self.transmit = transmit
+        print("WebTransportHandler created")
 
     def http_event_received(self, event: H3Event) -> None:
         if not self.closed:
@@ -280,7 +281,7 @@ class WebTransportHandler:
     async def send(self, message: Dict) -> None:
         data = b""
         end_stream = False
-
+        print("sending", message)
         if message["type"] == "webtransport.accept":
             self.accepted = True
 
@@ -316,7 +317,9 @@ class WebTransportHandler:
             )
         if end_stream:
             self.closed = True
+        print("transmitting", message)
         self.transmit()
+        print("done transmitting")
 
 
 Handler = Union[HttpRequestHandler, WebSocketHandler, WebTransportHandler]
