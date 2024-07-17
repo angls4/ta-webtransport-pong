@@ -11,10 +11,6 @@
       "src": "/(.*)",
       "dest": "/frontend/build/$1",
       "continue": true
-    },
-    {
-      "src": "/(.*)",
-      "dest": "/http3_server.py"
     }
   ]
 }
