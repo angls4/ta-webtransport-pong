@@ -486,10 +486,11 @@ async def wt(handler: Handler, scope: Scope, receive: Receive, send: Send) -> No
         if connection.user and connection.user.room:
             connection.user.room.gameState.isRunning = False
 
-starlette = Starlette(debug=True,
+starlette = Starlette(
+    debug=True,
     routes=[
-        Route("/", homepage),
-        Route("/{size:int}", padding),
+        # Route("/", homepage),
+        # Route("/{size:int}", padding),
         Route("/echo", echo, methods=["POST"]),
         Route("/list_room", list_room_get),
         Route("/get_room", get_room_get),
@@ -499,10 +500,12 @@ starlette = Starlette(debug=True,
         Route("/create_room", create_room_post, methods=["POST"]),
         Route("/logs", logs),
         WebSocketRoute("/ws", ws),
-        Mount(STATIC_URL, StaticFiles(directory=STATIC_ROOT, html=True)),
-    ]
+        # Mount(STATIC_URL, StaticFiles(directory=STATIC_ROOT, html=True)),
+        Mount("/", StaticFiles(directory="frontend/build", html=True), name="frontend"),
+    ],
 )
 
+# starlette.mount("/", StaticFiles(directory="frontend/build", html=True), name="frontend")
 
 # Add CORSMiddleware to your Starlette application
 starlette.add_middleware(

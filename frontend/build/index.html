@@ -1,0 +1,58 @@
+<!doctype html>
+<html lang="en">
+	<head>
+		<meta charset="utf-8" />
+		<link rel="icon" href="./favicon.png" />
+		<meta name="viewport" content="width=device-width, initial-scale=1" />
+		<!-- 
+		<link rel="modulepreload" href="./_app/immutable/entry/start.CUnbQo2C.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/scheduler.CTimOCLo.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/singletons.BK8_J8lg.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/index.BXnrS5-F.js">
+		<link rel="modulepreload" href="./_app/immutable/entry/app.BYmpp86w.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/preload-helper.CRk0x-X1.js">
+		<link rel="modulepreload" href="./_app/immutable/chunks/index.CRnmY6F2.js">
+		<link rel="modulepreload" href="./_app/env.js"> -->
+	</head>
+	<body data-sveltekit-preload-data="hover">
+		<div style="display: contents">
+			<script>
+				{
+					__sveltekit_12hd98f = {
+						base: new URL(".", location).pathname.slice(0, -1),
+						env: null
+					};
+
+					const element = document.currentScript.parentElement;
+
+					Promise.all([
+						import("./_app/immutable/entry/start.CUnbQo2C.js"),
+						import("./_app/immutable/entry/app.BYmpp86w.js")
+					]).then(([kit, app]) => {
+						kit.start(app, element);
+					});
+				}
+			</script>
+		</div>
+	</body>
+</html>
+
+</body>
+
+<script>
+	// console.log('Hello from scriptss.js');
+	// (async ()=>{
+	// 	let transport = new WebTransport('https://localhost:4433/wt');
+	// 	await transport.ready;
+	
+	// 	let stream = await transport.createBidirectionalStream();
+	// 	let reader = stream.readable.getReader();
+	// 	let writer = stream.writable.getWriter();
+	
+	// 	await writer.write(new Uint8Array([65, 66, 67]));
+	// 	let received = await reader.read();
+	// 	await transport.close();
+	
+	// 	console.log('received', received);
+	// })()
+</script>
