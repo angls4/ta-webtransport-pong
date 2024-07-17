@@ -9,6 +9,6 @@ set PRIVATE_KEY_PATH=ssl_key.pem
 
 set SERVER_SCRIPT=http3_server.py
 
-watchmedo auto-restart --patterns="*.py" --recursive -- py %SERVER_SCRIPT% --certificate %CERTIFICATE_PATH% --private-key %PRIVATE_KEY_PATH%
+watchmedo auto-restart --patterns="*.py" --recursive -- py %SERVER_SCRIPT% --certificate %CERTIFICATE_PATH% --private-key %PRIVATE_KEY_PATH% -v
 
 endlocal

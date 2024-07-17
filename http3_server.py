@@ -76,7 +76,7 @@ class HttpRequestHandler:
             )
 
     async def run_asgi(self, app: AsgiApplication) -> None:
-        await app(self.scope, self.receive, self.send)
+        await app(self.connection, self.scope, self.receive, self.send)
 
     async def receive(self) -> Dict:
         return await self.queue.get()
@@ -167,7 +167,7 @@ class WebSocketHandler:
         self.queue.put_nowait({"type": "websocket.connect"})
 
         try:
-            await app(self.scope, self.receive, self.send)
+            await app(self.connection,self.scope, self.receive, self.send)
         finally:
             if not self.closed:
                 await self.send({"type": "websocket.close", "code": 1000})
@@ -237,6 +237,7 @@ class WebTransportHandler:
         self.accepted = False
         self.closed = False
         self.connection = connection
+        print("connection", connection._quic._close_event)
         self.http_event_queue: Deque[H3Event] = deque()
         self.queue: asyncio.Queue[Dict] = asyncio.Queue()
         self.scope = scope
@@ -270,7 +271,7 @@ class WebTransportHandler:
         self.queue.put_nowait({"type": "webtransport.connect"})
 
         try:
-            await app(self.scope, self.receive, self.send)
+            await app(self, self.scope, self.receive, self.send)
         finally:
             if not self.closed:
                 await self.send({"type": "webtransport.close"})
@@ -489,15 +490,27 @@ async def main(
     retry: bool,
 ) -> None:
     print(f"Listening on {host}:{port}")
-    await serve(
-        host,
-        port,
-        configuration=configuration,
-        create_protocol=HttpServerProtocol,
-        session_ticket_fetcher=session_ticket_store.pop,
-        session_ticket_handler=session_ticket_store.add,
-        retry=retry,
+    await asyncio.gather(
+        application2(),
+        serve(
+            host,
+            port,
+            configuration=configuration,
+            create_protocol=HttpServerProtocol,
+            session_ticket_fetcher=session_ticket_store.pop,
+            session_ticket_handler=session_ticket_store.add,
+            retry=retry,
+        ),
     )
+    # await serve(
+    #     host,
+    #     port,
+    #     configuration=configuration,
+    #     create_protocol=HttpServerProtocol,
+    #     session_ticket_fetcher=session_ticket_store.pop,
+    #     session_ticket_handler=session_ticket_store.add,
+    #     retry=retry,
+    # )
     await asyncio.Future()
 
 
@@ -580,6 +593,7 @@ if __name__ == "__main__":
     module_str, attr_str = args.app.split(":", maxsplit=1)
     module = importlib.import_module(module_str)
     application = getattr(module, attr_str)
+    application2 = getattr(module, 'run_uvicorn')
 
     # create QUIC logger
     if args.quic_log:
