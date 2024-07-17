@@ -518,7 +518,7 @@ starlette.add_middleware(
 print("added middlewaressss")
 
 async def run_uvicorn():
-    config = uvicorn.Config(starlette, host="127.0.0.1",ws='wsproto', http='auto', port=443, log_level="info")
+    config = uvicorn.Config(starlette, host="0.0.0.0",ws='wsproto', http='auto', port=443, log_level="info")
     server = uvicorn.Server(config)
     await server.serve()
 
