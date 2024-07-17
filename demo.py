@@ -501,7 +501,7 @@ starlette = Starlette(
         Route("/logs", logs),
         WebSocketRoute("/ws", ws),
         # Mount(STATIC_URL, StaticFiles(directory=STATIC_ROOT, html=True)),
-        # Mount("/", StaticFiles(directory="frontend/build", html=True), name="frontend"),
+        Mount("/", StaticFiles(directory="frontend/build", html=True), name="frontend"),
     ],
 )
 

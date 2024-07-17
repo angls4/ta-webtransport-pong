@@ -542,7 +542,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--host",
         type=str,
-        default="::",
+        default="127.0.0.1",
         help="listen on the specified address (defaults to ::)",
     )
     parser.add_argument(

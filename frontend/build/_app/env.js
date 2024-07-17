@@ -1,1 +1,1 @@
-export const env={"PUBLIC_API":"http://localhost"}
+export const env={"PUBLIC_API":"http://localhost:443"}
