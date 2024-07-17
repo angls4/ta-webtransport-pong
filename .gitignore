@@ -2,3 +2,4 @@
 venv
 node_client
 dist
+__pycache__
