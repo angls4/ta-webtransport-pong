@@ -501,7 +501,7 @@ starlette = Starlette(
         Route("/logs", logs),
         WebSocketRoute("/ws", ws),
         # Mount(STATIC_URL, StaticFiles(directory=STATIC_ROOT, html=True)),
-        Mount("/", StaticFiles(directory="frontend/build", html=True), name="frontend"),
+        # Mount("/", StaticFiles(directory="frontend/build", html=True), name="frontend"),
     ],
 )
 
@@ -518,7 +518,7 @@ starlette.add_middleware(
 print("added middlewaressss")
 
 async def run_uvicorn():
-    config = uvicorn.Config(starlette, host="127.0.0.1",ws='wsproto', http='auto', port=80, log_level="info")
+    config = uvicorn.Config(starlette, host="127.0.0.1",ws='wsproto', http='auto', port=443, log_level="info")
     server = uvicorn.Server(config)
     await server.serve()
 

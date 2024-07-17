@@ -548,7 +548,7 @@ if __name__ == "__main__":
     parser.add_argument(
         "--port",
         type=int,
-        default=4433,
+        default=443,
         help="listen on the specified port (defaults to 4433)",
     )
     parser.add_argument(
