@@ -8,7 +8,8 @@ import json
 from urllib.parse import urlencode
 import asyncio
 import uvicorn
-import h2
+# import h2
+import ssl
 
 import uvicorn.config
 from helpers import *
@@ -516,9 +517,13 @@ starlette.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 print("added middlewaressss")
-
+certfile = "ssl_cert.pem"
+keyfile = "ssl_key.pem"
+ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+ssl_context.load_cert_chain(certfile, keyfile)
+print(ssl_context.__dict__)
 async def run_uvicorn():
-    config = uvicorn.Config(starlette, host="0.0.0.0",ws='wsproto', http='auto', port=443, log_level="info")
+    config = uvicorn.Config(starlette, host="0.0.0.0",ws='wsproto', http='auto', port=443, log_level="info", ssl_certfile=certfile, ssl_keyfile=keyfile)
     server = uvicorn.Server(config)
     await server.serve()
 
