@@ -1,0 +1,18 @@
+{
+  "version": 2,
+  "builds": [
+    {
+      "src": "http3_server.py",
+      "use": "@vercel/python"
+    }
+  ],
+  "routes": [
+    {
+      "src": "/(.*)",
+      "dest": "/http3_server.py"
+    }
+  ],
+  "env": {
+    "APP_MODULE": "main:app"
+  }
+}

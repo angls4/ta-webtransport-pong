@@ -1,0 +1,74 @@
+
+This file lists modules PyInstaller was not able to find. This does not
+necessarily mean this module is required for running your program. Python and
+Python 3rd-party packages include a lot of conditional or optional modules. For
+example the module 'ntpath' only exists on Windows, whereas the module
+'posixpath' only exists on Posix systems.
+
+Types if import:
+* top-level: imported at the top-level - look at these first
+* conditional: imported within an if-statement
+* delayed: imported within a function
+* optional: imported within a try-except-statement
+
+IMPORTANT: Do NOT post this list to the issue-tracker. Use it as a basis for
+            tracking down the missing module yourself. Thanks!
+
+missing module named _scproxy - imported by urllib.request (conditional)
+missing module named termios - imported by tty (top-level), click._termui_impl (conditional), getpass (optional)
+missing module named pwd - imported by shutil (delayed, optional), tarfile (optional), pathlib (delayed, optional), subprocess (delayed, conditional, optional), posixpath (delayed, conditional, optional), webbrowser (delayed), getpass (delayed), netrc (delayed, conditional)
+missing module named 'org.python' - imported by copy (optional), xml.sax (delayed, conditional)
+missing module named 'java.lang' - imported by platform (delayed, optional), xml.sax._exceptions (conditional)
+missing module named multiprocessing.BufferTooShort - imported by multiprocessing (top-level), multiprocessing.connection (top-level)
+missing module named multiprocessing.AuthenticationError - imported by multiprocessing (top-level), multiprocessing.connection (top-level)
+missing module named _frozen_importlib_external - imported by importlib._bootstrap (delayed), importlib (optional), importlib.abc (optional), zipimport (top-level)
+excluded module named _frozen_importlib - imported by importlib (optional), importlib.abc (optional), zipimport (top-level)
+missing module named grp - imported by shutil (delayed, optional), tarfile (optional), pathlib (delayed, optional), subprocess (delayed, conditional, optional)
+missing module named posix - imported by shutil (conditional), importlib._bootstrap_external (conditional), os (conditional, optional), posixpath (optional)
+missing module named resource - imported by posix (top-level)
+missing module named _posixshmem - imported by multiprocessing.resource_tracker (conditional), multiprocessing.shared_memory (conditional)
+missing module named _posixsubprocess - imported by subprocess (conditional), multiprocessing.util (delayed)
+missing module named multiprocessing.get_context - imported by multiprocessing (top-level), multiprocessing.pool (top-level), multiprocessing.managers (top-level), multiprocessing.sharedctypes (top-level)
+missing module named multiprocessing.TimeoutError - imported by multiprocessing (top-level), multiprocessing.pool (top-level)
+missing module named org - imported by pickle (optional)
+missing module named fcntl - imported by subprocess (optional)
+missing module named multiprocessing.set_start_method - imported by multiprocessing (top-level), multiprocessing.spawn (top-level)
+missing module named multiprocessing.get_start_method - imported by multiprocessing (top-level), multiprocessing.spawn (top-level)
+missing module named multiprocessing.Pipe - imported by multiprocessing (top-level), uvicorn.supervisors.multiprocess (top-level)
+missing module named pyimod02_importers - imported by D:\Adnan\dokumen\skripsi\webtransport\github\ta-webtransport-pong\venv\Lib\site-packages\PyInstaller\hooks\rthooks\pyi_rth_pkgutil.py (delayed)
+missing module named uvloop - imported by http3_server (optional), D:\Adnan\dokumen\skripsi\webtransport\github\ta-webtransport-pong\http3_server.py (optional), anyio._backends._asyncio (delayed, conditional), uvicorn.loops.auto (delayed, optional), uvicorn.loops.uvloop (top-level)
+missing module named bcrypt - imported by cryptography.hazmat.primitives.serialization.ssh (optional)
+missing module named importlib_metadata - imported by click.decorators (delayed, conditional, optional), attr (delayed, conditional)
+missing module named typing_extensions - imported by click.globals (conditional), click.utils (conditional), click.types (conditional), click.parser (conditional), click.core (conditional), click.decorators (conditional), uvicorn._types (conditional), h11._headers (optional), anyio._core._eventloop (conditional), anyio.abc._eventloop (conditional), anyio.abc._tasks (conditional), anyio.from_thread (conditional), anyio.to_thread (conditional), anyio.streams.tls (conditional), starlette._utils (conditional), starlette.concurrency (conditional), starlette.middleware (conditional), starlette.background (conditional), attr._compat (conditional, optional), starlette.applications (conditional), jinja2.bccache (conditional), markupsafe (conditional), jinja2.utils (conditional), jinja2.runtime (conditional), jinja2.lexer (conditional), jinja2.nodes (conditional), jinja2.visitor (conditional), jinja2.compiler (conditional), jinja2.filters (conditional), jinja2.defaults (conditional), jinja2.parser (conditional), jinja2.environment (conditional), jinja2.ext (conditional), anyio._backends._asyncio (conditional), anyio._backends._trio (conditional)
+missing module named vms_lib - imported by platform (delayed, optional)
+missing module named java - imported by platform (delayed)
+missing module named _winreg - imported by platform (delayed, optional)
+missing module named 'trio.testing' - imported by anyio._backends._trio (delayed)
+missing module named exceptiongroup - imported by anyio._core._sockets (conditional), starlette._utils (conditional, optional), anyio._backends._asyncio (conditional), anyio._backends._trio (conditional)
+missing module named 'trio.to_thread' - imported by anyio._backends._trio (top-level)
+missing module named 'trio.socket' - imported by anyio._backends._trio (top-level)
+missing module named outcome - imported by anyio._backends._trio (top-level)
+missing module named 'trio.lowlevel' - imported by anyio._backends._trio (top-level)
+missing module named trio - imported by anyio._backends._trio (top-level)
+missing module named asyncio.DefaultEventLoopPolicy - imported by asyncio (delayed, conditional), asyncio.events (delayed, conditional)
+missing module named curio - imported by sniffio._impl (delayed, conditional)
+missing module named _typeshed - imported by anyio._core._fileio (conditional)
+missing module named 'multipart.multipart' - imported by starlette.formparsers (optional), starlette.requests (optional)
+missing module named multipart - imported by starlette.formparsers (optional)
+missing module named yaml - imported by uvicorn.config (delayed, conditional)
+missing module named dotenv - imported by uvicorn.config (delayed, conditional)
+missing module named a2wsgi - imported by uvicorn.middleware.wsgi (optional)
+missing module named win32evtlog - imported by logging.handlers (delayed, optional)
+missing module named win32evtlogutil - imported by logging.handlers (delayed, optional)
+missing module named 'gunicorn.workers' - imported by uvicorn.workers (top-level)
+missing module named gunicorn - imported by uvicorn.workers (top-level)
+missing module named watchgod - imported by uvicorn.supervisors.watchgodreload (top-level)
+missing module named watchfiles - imported by uvicorn.supervisors.watchfilesreload (top-level)
+missing module named 'websockets.typing' - imported by uvicorn.protocols.websockets.websockets_impl (top-level)
+missing module named 'websockets.server' - imported by uvicorn.protocols.websockets.websockets_impl (top-level)
+missing module named 'websockets.extensions' - imported by uvicorn.protocols.websockets.websockets_impl (top-level)
+missing module named 'websockets.exceptions' - imported by uvicorn.protocols.websockets.websockets_impl (top-level)
+missing module named 'websockets.datastructures' - imported by uvicorn.protocols.websockets.websockets_impl (top-level)
+missing module named 'websockets.legacy' - imported by uvicorn.protocols.websockets.websockets_impl (top-level)
+missing module named websockets - imported by uvicorn.protocols.websockets.websockets_impl (top-level), uvicorn.protocols.websockets.auto (optional)
+missing module named httptools - imported by uvicorn.protocols.http.httptools_impl (top-level), uvicorn.protocols.http.auto (optional)

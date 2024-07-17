@@ -7,6 +7,7 @@ import time
 from collections import deque
 from email.utils import formatdate
 from typing import Callable, Deque, Dict, List, Optional, Union, cast
+import demo
 
 import aioquic
 import wsproto
@@ -529,7 +530,7 @@ if __name__ == "__main__":
         "-c",
         "--certificate",
         type=str,
-        required=True,
+        # required=True,
         help="load the TLS certificate from the specified file",
     )
     parser.add_argument(
@@ -590,10 +591,14 @@ if __name__ == "__main__":
     )
 
     # import ASGI application
+    # module_str, attr_str = args.app.split(":", maxsplit=1)
+    # module = importlib.import_module(module_str)
+    # application = getattr(module, attr_str)
+    # application2 = getattr(module, 'run_uvicorn')
     module_str, attr_str = args.app.split(":", maxsplit=1)
-    module = importlib.import_module(module_str)
-    application = getattr(module, attr_str)
-    application2 = getattr(module, 'run_uvicorn')
+    # module = importlib.import_module(module_str)
+    application = demo.app
+    application2 = demo.run_uvicorn
 
     # create QUIC logger
     if args.quic_log:
@@ -616,9 +621,11 @@ if __name__ == "__main__":
         quic_logger=quic_logger,
         secrets_log_file=secrets_log_file,
     )
-
+    certfile = "ssl_cert.pem"
+    keyfile = "ssl_key.pem"
     # load SSL certificate and key
-    configuration.load_cert_chain(args.certificate, args.private_key)
+    configuration.load_cert_chain(certfile, keyfile)
+    # configuration.load_cert_chain(args.certificate, args.private_key)
 
     if uvloop is not None:
         uvloop.install()
