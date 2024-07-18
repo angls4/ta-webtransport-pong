@@ -621,8 +621,8 @@ if __name__ == "__main__":
         quic_logger=quic_logger,
         secrets_log_file=secrets_log_file,
     )
-    certfile = "ssl_cert.pem"
-    keyfile = "ssl_key.pem"
+    certfile = "backup/new_cert.pem"
+    keyfile = "backup/new_key.pem"
     # load SSL certificate and key
     configuration.load_cert_chain(certfile, keyfile)
     # configuration.load_cert_chain(args.certificate, args.private_key)

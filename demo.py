@@ -517,8 +517,8 @@ starlette.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 print("added middlewaressss")
-certfile = "ssl_cert.pem"
-keyfile = "ssl_key.pem"
+certfile = "backup/new_cert.pem"
+keyfile = "backup/new_key.pem"
 ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
 ssl_context.load_cert_chain(certfile, keyfile)
 print(ssl_context.__dict__)
