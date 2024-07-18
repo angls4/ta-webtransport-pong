@@ -519,7 +519,7 @@ starlette.add_middleware(
 print("added middlewaressss")
 certfile = "new_cert.pem"
 keyfile = "new_key.pem"
-ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLSv1_2)
 ssl_context.set_ciphers("ALL:@SECLEVEL=0")
 ssl_context.load_cert_chain(certfile, keyfile)
 ssl_context.set_ciphers("ALL:@SECLEVEL=0")
