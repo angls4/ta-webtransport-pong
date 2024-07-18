@@ -525,7 +525,17 @@ ssl_context.load_cert_chain(certfile, keyfile)
 ssl_context.set_ciphers("ALL:@SECLEVEL=0")
 print(ssl_context.__dict__)
 async def run_uvicorn():
-    config = uvicorn.Config(starlette, host="0.0.0.0",ws='wsproto', http='auto', port=443, log_level="info", ssl_certfile=certfile, ssl_keyfile=keyfile)
+    config = uvicorn.Config(
+        starlette,
+        host="0.0.0.0",
+        ws="wsproto",
+        http="auto",
+        port=443,
+        log_level="info",
+        ssl_version=ssl.PROTOCOL_TLSv1_2,
+        ssl_certfile=certfile,
+        ssl_keyfile=keyfile,
+    )
     server = uvicorn.Server(config)
     await server.serve()
 
