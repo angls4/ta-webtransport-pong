@@ -533,6 +533,7 @@ async def run_uvicorn():
         port=443,
         log_level="info",
         ssl_version=ssl.PROTOCOL_TLSv1_2,
+        ssl_ciphers="ALL:@SECLEVEL=0",
         ssl_certfile=certfile,
         ssl_keyfile=keyfile,
     )
