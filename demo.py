@@ -517,10 +517,10 @@ starlette.add_middleware(
     allow_headers=["*"],  # Allows all headers
 )
 print("added middlewaressss")
-certfile = "backup/new_cert.pem"
-keyfile = "backup/new_key.pem"
+certfile = "new_cert.pem"
+keyfile = "new_key.pem"
 ssl_context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
-ssl_context.set_ciphers("ALL:@SECLEVEL=0")
+# ssl_context.set_ciphers("ALL:@SECLEVEL=0")
 ssl_context.load_cert_chain(certfile, keyfile)
 print(ssl_context.__dict__)
 async def run_uvicorn():
