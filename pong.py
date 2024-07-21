@@ -288,22 +288,19 @@ async def ws(websocket: WebSocket):
     connection = Connection(id, websocket.scope, send_wrapped, websocket.receive_bytes)
     try:
         while True:
-            message = await websocket.receive_bytes()
-            result = handle_message(message, connection)
-            if result == False:
-                connection.closed = True
             if connection.closed:
                 print("closing websocket")
                 websocket.close()
                 break
+            message = await websocket.receive_bytes()
+            result = handle_message(message, connection)
+            if result == False:
+                connection.closed = True
     except WebSocketDisconnect:
         connection.closed = True
         pass
     if connection.closed:
         if connection.user and connection.user.room:
-            room = connection.user.room
-            room.pause()
-            if connection.user and connection.user.room:
                 room = connection.user.room
                 room.pause()
                 players = list(room.gameState.players.values())
@@ -313,7 +310,6 @@ async def ws(websocket: WebSocket):
                         asyncio.create_task(players[1].user.connection.send(room.gameState.get_dict()))
                 except Exception as e:
                     print(e)
-
 
 def print_close_event(handler: WebTransportHandler):
     closeEvent = handler.connection._quic._close_event
@@ -356,6 +352,16 @@ async def wt(handler: WebTransportHandler, scope: Scope, receive: Receive, send:
     while True:
         if connection.closed:
             print("closing webtransport")
+            if connection.user and connection.user.room:
+                room = connection.user.room
+                room.pause()
+                players = list(room.gameState.players.values())
+                try:
+                    if(len(players) == 2):
+                        asyncio.create_task(players[0].user.connection.send(room.gameState.get_dict(),True,stream))
+                        asyncio.create_task(players[1].user.connection.send(room.gameState.get_dict(),True,stream))
+                except Exception as e:
+                    print(e)
             handler.connection._quic.close()
             handler.closed = True
             break
@@ -371,16 +377,6 @@ async def wt(handler: WebTransportHandler, scope: Scope, receive: Receive, send:
         result = handle_message(message, connection, stream)
         if result == False:
             connection.closed = True
-            if connection.user and connection.user.room:
-                room = connection.user.room
-                room.pause()
-                players = list(room.gameState.players.values())
-                try:
-                    if(len(players) == 2):
-                        asyncio.create_task(players[0].user.connection.send(room.gameState.get_dict(),True,stream))
-                        asyncio.create_task(players[1].user.connection.send(room.gameState.get_dict(),True,stream))
-                except Exception as e:
-                    print(e)
             continue
 
 starlette = Starlette(

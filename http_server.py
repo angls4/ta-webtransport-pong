@@ -375,7 +375,9 @@ if __name__ == "__main__":
     configuration.load_cert_chain(HTTP3_CERT, HTTP3_KEY)
 
     if uvloop is not None:
+        print("installing uvloop event loop...")
         uvloop.install()
+        print("Using uvloop event loop")
 
     try:
         selector = selectors.SelectSelector()
