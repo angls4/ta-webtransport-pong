@@ -7,8 +7,9 @@ setlocal
 set CERTIFICATE_PATH=ssl_cert.pem
 set PRIVATE_KEY_PATH=ssl_key.pem
 
-set SERVER_SCRIPT=http3_server.py
+set SERVER_SCRIPT=http_server.py
 
-watchmedo auto-restart --patterns="*.py" --recursive -- py %SERVER_SCRIPT% --certificate %CERTIFICATE_PATH% --private-key %PRIVATE_KEY_PATH% -v
+@REM watchmedo auto-restart --patterns="*.py" --recursive -- py %SERVER_SCRIPT% --certificate %CERTIFICATE_PATH% --private-key %PRIVATE_KEY_PATH% -v
+watchmedo auto-restart --patterns="*.py" --recursive -- py %SERVER_SCRIPT% -v
 
 endlocal

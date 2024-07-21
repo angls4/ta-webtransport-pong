@@ -1,7 +1,7 @@
 from typing import TypedDict
 from starlette.types import Receive, Scope, Send
 import asyncio
-GAMESTATE_UPDATE_INTERVAL = 1 / 40 
+GAMESTATE_UPDATE_INTERVAL = 1 / 60
 
 class Connection:
     def __init__(self, id: str, scope: Scope, send: Send, receive: Receive, user: 'User' = None, closed = False):
@@ -64,12 +64,7 @@ class State:
         self,
         ballX=0,
         ballY=0,
-        # paddle1Y=0,
-        # paddle2Y=0,
-        # score=0,
-        # score=0,
-        # wins1=0,
-        # wins2=0,
+
         players: dict[str,Player] = None
     ):
         self.ballX = ballX
@@ -77,27 +72,18 @@ class State:
         self.players = players
         if self.players is None:
             self.players = dict()
-        # self.players[self.p0index].paddleY = paddle1Y
-        # self.players[self.p1index].paddleY = paddle2Y
-        # self.players[self.p0index].score = score
-        # self.players[self.p1index].score = score
-        # self.players[self.p0index].wins = wins1
-        # self.players[self.p1index].wins = wins2
-    # def set_state(self) -> None:
-    #     self.__init__()
+
     def get_dict(self) -> dict:
         return {
             "ballX": self.ballX,
             "ballY": self.ballY,
-            "players": [player.get_dict() for player in self.players.values()]
+            "players" : {k: v.get_dict() for k, v in self.players.items()}
         }
 
 class Room(RoomConfig):
     def __init__(self, id: str, roomConfig: RoomConfig, state: State = State()):
         super().__init__(**roomConfig.__dict__)
-        # print("RoomConfig",roomConfig.__dict__)
         self.gameState: GameState = GameState(self,state)
-        # print("GameState",self.gameState.__dict__)
         self.id = id
     def get_dict(self):
         return {
@@ -115,10 +101,14 @@ class Room(RoomConfig):
     def pause(self) -> bool:
         self.gameState.isRunning = False
         return self.gameState.isRunning
-    def kick(self,user_id: str) -> User | None:
-        player: Player = self.gameState.players.pop(user_id,None)
+    def kick(self,user: User) -> User | None:
+        player: Player = self.gameState.players.pop(user.id,None)
         user = player.user
         if user is not None:
+            if self.gameState.p0index == user.id:
+                self.gameState.p0index = None
+            if self.gameState.p1index == user.id:
+                self.gameState.p1index = None
             user.room = None
             user.player = None
             if len(self.gameState.players) < 2:
@@ -128,40 +118,35 @@ class Room(RoomConfig):
             return user
         else:
             return None
-    # winner: int
-    # active: bool
+    def add_player(self,user: User) -> None:
+        player = Player(user=user)
+        user.room = self
+        user.player = player
+        # players = dict.copy(self.gameState.players)
+        self.gameState.players[user.id] = player
+        # self.gameState.players = players
+        if not self.gameState.p0index:
+            self.gameState.p0index = user.id
+        elif not self.gameState.p1index:
+            self.gameState.p1index = user.id
+
 
 
 class GameState(State):
-    # updateInterval: int
-    # lastUpdate: int
-    # isRunning: bool
-
     def __init__(self, room: Room, state: State = State()):
         super().__init__(**state.__dict__)
         self.room = room
-        # self.updateInterval = GAMESTATE_UPDATE_INTERVAL
         self.reset()
         self.isRunning = False
         self.p0index = ""
         self.p1index = ""
         asyncio.create_task(self.update_gamestate())
-        # self.reset_paddle()
 
     def get_dict(self) -> State:
-
-        # state: State = {
-        #     "ballX": self.ballX,
-        #     "ballY": self.ballY,
-        #     "paddle1Y": self.players[self.p0index].paddleY,
-        #     "paddle2Y": self.players[self.p1index].paddleY,
-        #     "score1": self.players[self.p0index].score,
-        #     "score2": self.players[self.p1index].score,
-        #     "wins1": self.players[self.p0index].wins,
-        #     "wins2": self.players[self.p1index].wins,
-        # }
         return {
             "isRunning": self.isRunning,
+            "p0index": self.p0index,
+            "p1index": self.p1index,
             **State(self.ballX, self.ballY, self.players).get_dict(),
         }
 
@@ -169,16 +154,6 @@ class GameState(State):
         """Reset the game state to start a new game."""
         self.reset_ball()
         self.reset_score()
-        # self.players[self.p0index].score = 0
-        # self.players[self.p1index].score = 0
-        # self.players[self.p0index].wins = 0
-        # self.players[self.p1index].wins = 0
-        # self.room.winner = 0
-        # self.room.active = True
-
-    # def reset_paddle(self):
-    #     self.players[self.p0index].paddleY = (self.room.height - self.room.paddleHeight) // 2
-    #     self.players[self.p1index].paddleY = (self.room.height - self.room.paddleHeight) // 2
 
     def reset_ball(self):
         self.ballX = self.room.width // 2
@@ -191,64 +166,55 @@ class GameState(State):
         self.players[self.p0index].score = 0
         self.players[self.p1index].score = 0
 
-    # def update_ball_position(self):
-    #     """Update the ball's position based on current speed and direction."""
-    #     self.ballX += self.room.ballSpeedX
-    #     self.ballY += self.room.ballSpeedY
-
     async def update_gamestate(self):
         while True:
-            # try:
-            # print("update_gamestate?")
-            await asyncio.sleep(GAMESTATE_UPDATE_INTERVAL)
-            if not self.isRunning:
-                continue
-            # print("update_gamestate")
-            # Update wins and score
-            if self.players[self.p0index].score >= 10:
-                self.players[self.p0index].wins += 1
-                self.reset_score()
-            if self.players[self.p1index].score >= 10:
-                self.players[self.p1index].wins += 1
-                self.reset_score()
-            # Simple collision detection with walls
-            if (
-                self.ballY + self.room.ballRadius > self.room.height
-                or self.ballY - self.room.ballRadius < 0
-            ):
-                self.room.ballSpeedY *= -1
+            try:
+                await asyncio.sleep(GAMESTATE_UPDATE_INTERVAL)
+                if not self.isRunning or len(self.players) < 2:
+                    continue
+                # Update wins and score
+                if self.players[self.p0index].score >= 10:
+                    self.players[self.p0index].wins += 1
+                    self.reset_score()
+                if self.players[self.p1index].score >= 10:
+                    self.players[self.p1index].wins += 1
+                    self.reset_score()
+                # Simple collision detection with walls
+                if (
+                    self.ballY + self.room.ballRadius > self.room.height
+                    or self.ballY - self.room.ballRadius < 0
+                ):
+                    self.room.ballSpeedY *= -1
 
-            # Collision detection with left paddle
-            if (
-                self.ballX - self.room.ballRadius < self.room.paddleWidth
-                and self.ballY + self.room.ballRadius > self.players[self.p0index].paddleY
-                and self.ballY - self.room.ballRadius
-                < self.players[self.p0index].paddleY + self.room.paddleHeight
-            ):
-                self.room.ballSpeedX *= -1
+                # Collision detection with left paddle
+                if (
+                    self.ballX - self.room.ballRadius < self.room.paddleWidth
+                    and self.ballY + self.room.ballRadius > self.players[self.p0index].paddleY
+                    and self.ballY - self.room.ballRadius
+                    < self.players[self.p0index].paddleY + self.room.paddleHeight
+                ):
+                    self.room.ballSpeedX *= -1
 
-            # Collision detection with right paddle
-            if (
-                self.ballX + self.room.ballRadius
-                > self.room.width - self.room.paddleWidth
-                and self.ballY + self.room.ballRadius > self.players[self.p1index].paddleY
-                and self.ballY - self.room.ballRadius
-                < self.players[self.p1index].paddleY + self.room.paddleHeight
-            ):
-                self.room.ballSpeedX *= -1
+                # Collision detection with right paddle
+                if (
+                    self.ballX + self.room.ballRadius
+                    > self.room.width - self.room.paddleWidth
+                    and self.ballY + self.room.ballRadius > self.players[self.p1index].paddleY
+                    and self.ballY - self.room.ballRadius
+                    < self.players[self.p1index].paddleY + self.room.paddleHeight
+                ):
+                    self.room.ballSpeedX *= -1
 
-            # Update ball position
-            self.ballX += self.room.ballSpeedX * GAMESTATE_UPDATE_INTERVAL * 10
-            self.ballY += self.room.ballSpeedY * GAMESTATE_UPDATE_INTERVAL * 10
+                # Update ball position
+                self.ballX += self.room.ballSpeedX * GAMESTATE_UPDATE_INTERVAL * 10
+                self.ballY += self.room.ballSpeedY * GAMESTATE_UPDATE_INTERVAL * 10
 
-            # Reset ball position if it goes past paddles
-            if self.ballX + self.room.ballRadius > self.room.width:
-                self.reset_ball()
-                self.players[self.p0index].score += 1
-            if self.ballX - self.room.ballRadius < 0:
-                self.reset_ball()
-                self.players[self.p1index].score += 1
-            # except Exception as e:
-            #     print("update_gamestate error",e)
-            #     continue
-
+                # Reset ball position if it goes past paddles
+                if self.ballX + self.room.ballRadius > self.room.width:
+                    self.reset_ball()
+                    self.players[self.p0index].score += 1
+                if self.ballX - self.room.ballRadius < 0:
+                    self.reset_ball()
+                    self.players[self.p1index].score += 1
+            except Exception as e:
+                print(e)
