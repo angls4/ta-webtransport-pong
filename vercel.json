@@ -2,7 +2,7 @@
   "version": 2,
   "builds": [
     {
-      "src": "http3_server.py",
+      "src": "http_server.py",
       "use": "@vercel/python"
     }
   ],
@@ -14,7 +14,7 @@
     },
     {
       "src": "/(.*)",
-      "dest": "/http3_server.py"
+      "dest": "/http_server.py"
     }
   ]
 }
