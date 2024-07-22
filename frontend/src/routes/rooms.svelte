@@ -2,36 +2,35 @@
     // @ts-nocheck
     import { onMount } from "svelte";
     import { connection, user, state } from "$lib/store";
+    import { afterUpdate } from "svelte";
 
-    // const PUBLIC_API = import.meta.env.VITE_PUBLIC_API
-    // const PUBLIC_API_WT = import.meta.env.VITE_PUBLIC_API_WT
-    // const PUBLIC_API_WS = import.meta.env.VITE_PUBLIC_API_WS
+    // CONSTANTS
+    const ERROR_CLEAR_TIMEOUT = 3000; //milliseconds
+    
     const hostUrl = window.location.origin;
     const PUBLIC_API = hostUrl;
     const PUBLIC_API_WT = hostUrl
-    const PUBLIC_API_WS =  hostUrl;     
+    const PUBLIC_API_WS =  hostUrl;   
+    // const PUBLIC_API = env.PUBLIC_API  
     let rooms = [];
     let room_name = "";
     let ball_speed;
     let user_name = $user?.name ?? "";
     let error = ""
-    let error_timeout;
-    import { afterUpdate } from "svelte";
+    let error_timeout_id;
 
     onMount(() => {
-        console.log("Rooms page mounted");
         state.subscribe(value => {
-            console.log("State changed", value);
             if(value = "room list" && $connection.connected) {
-                console.log("User", $user)
+                // join room if user has room
                 if($user.room) {
                     if($user.room?.id)
-                        handle_join_room($user.room);
+                        join_room($user.room);
                     else
-                        handle_join_room({id:$user.room});
+                        join_room({id:$user.room});
                 }
                 else{
-                    getRooms();
+                    refresh_room_list();
                 }
             }
         });
@@ -39,17 +38,16 @@
 
     afterUpdate(() => {
         if (error) {
-            clearTimeout(error_timeout);
-            error_timeout = setTimeout(() => {
+            clearTimeout(error_timeout_id);
+            error_timeout_id = setTimeout(() => {
                     error = "";
-            }, 3000);
+            }, ERROR_CLEAR_TIMEOUT);
         }
     });
 
-    async function getRooms() {
+    async function refresh_room_list() {
         const res = await fetch(`${PUBLIC_API}/list_room`);
         const resJson = (await res.json());
-        console.log("resJson",resJson)
         if(resJson.status == "success") {
             if(resJson.rooms) {
                 rooms = resJson.rooms;
@@ -63,65 +61,53 @@
             console.error("Failed to get rooms",resJson);
             error = resJson.message ?? "Failed to get rooms";
         }
-        console.log("got rooms",rooms)
-    }
-    function handle_refresh() {
-        getRooms();
+        console.log("room list refreshed",rooms)
     }
     async function handle_create_room() {
-            if (!room_name  || !ball_speed) {
-                console.error("Room name and ball speed are required");
-                error = "Room name and ball speed are required";
-                return;
-            }
-            const roomData = {
-                name: room_name,
-                width: 800,
-                height: 400,
-                paddleWidth: 10,
-                paddleHeight: 100,
-                ballRadius: 10,
-                ballSpeedX: ball_speed,
-                ballSpeedY: ball_speed
-            };
-            const url = `${PUBLIC_API}/create_room`;
-            console.log("Creating room...", url, roomData);
-            const res = await fetch(url, {
-                method: "POST",
-                headers: {
-                    "Content-Type": "application/json"
-                },
-                body: JSON.stringify(roomData)
-            })
-            .then(res => res.json())
-            .then(data => {
-                console.log("create room", data);
-                if(data.status == "success" && data.room?.id) {
-                    console.log("Room created successfully, joining...", data.room);
-                    handle_join_room(data.room);
-                }
-                else {
-                    console.error("Failed to create room", data.message);
-                    error = data.message ?? "Failed to create room";
-                }
-            })
-            .catch(err => {
-                console.error("Failed to create room", err);
-                error = err.message ?? "Failed to create room";
-            });
-
-            // const data = await res.json();
-            // if (data.status == "success") {
-            //     handle_join_room(data.room);
-            // } else{
-            //     console.error("Failed to create room", data.message);
-            //     return;
-            // }
-
-            console.log("Room created successfully");
-            getRooms();
+        if (!room_name  || !ball_speed) {
+            console.error("Room name and ball speed are required");
+            error = "Room name and ball speed are required";
+            return;
         }
-    async function handle_join_room(room) {
+        const roomData = {
+            name: room_name,
+            width: 800,
+            height: 400,
+            paddleWidth: 10,
+            paddleHeight: 100,
+            ballRadius: 10,
+            ballSpeedX: ball_speed,
+            ballSpeedY: ball_speed
+        };
+        const url = `${PUBLIC_API}/create_room`;
+        console.log("Creating room...", url, roomData);
+        const res = await fetch(url, {
+            method: "POST",
+            headers: {
+                "Content-Type": "application/json"
+            },
+            body: JSON.stringify(roomData)
+        })
+        .then(res => res.json())
+        .then(data => {
+            console.log("create room", data);
+            if(data.status == "success" && data.room?.id) {
+                console.log("Room created successfully, joining...", data.room);
+                join_room(data.room);
+            }
+            else {
+                console.error("Failed to create room", data.message);
+                error = data.message ?? "Failed to create room";
+            }
+        })
+        .catch(err => {
+            console.error("Failed to create room", err);
+            error = err.message ?? "Failed to create room";
+        });
+        console.log("Room created successfully");
+        refresh_room_list();
+    }
+    async function join_room(room) {
         console.log("Joining room...", room.id);
         const url = `${PUBLIC_API}/join_room`;
         const form = {
@@ -137,38 +123,24 @@
         })
         .then(res => res.json())
         .then(data => {
-            console.log("joining room", data);
             if(data.status == "success" && data.room?.id && data.user?.id) {
                 console.log("Joined room successfully");
                 $user = data.user;
                 $user.room = data.room;
-                console.log("User", $user);
-                play(room);
+                console.log("Playing room...", room);
+                $state = "game room";
             }
             else {
                 console.error("Failed to join room", data);
                 $user.room = null
                 error = data.message ?? "Failed to join room";
-                getRooms();
+                refresh_room_list();
             }
         })
         .catch(err => {
             console.error("Failed to join room", err);
             error = err.message ?? "Failed to join room";
         });
-    }
-    function play(room) {
-        console.log("Playing room...", room);
-        // connection.wt.send(Uint8Array.of(2))
-        // console.log($connection)
-        $state = "play";
-        // console.log($connection)
-        // $connection.addListener('wt',(protocol,message)=>{
-        //     console.log("WT listened",message)
-        //     // if(protocol == 2) {
-        //     //     console.log("play",message)
-        //     // }
-        // })
     }
     function handle_rename() {
         if(!user_name) {
@@ -347,7 +319,7 @@
     </span>
     </div>
     <p>
-        <button class="button"  on:click={handle_refresh}>Refresh</button>
+        <button class="button"  on:click={refresh_room_list}>Refresh</button>
     </p>
     <div class="card__header">
     </div>
@@ -362,7 +334,7 @@
                 <span class="room__detail">{Object.keys(room.gameState.players).length}/2 Players</span>
             </div>
             <div>
-                <button on:click={()=>handle_join_room(room)} class="button" disabled={Object.keys(room.gameState.players).length >= 2}>JOIN</button>
+                <button on:click={()=>join_room(room)} class="button" disabled={Object.keys(room.gameState.players).length >= 2}>JOIN</button>
             </div>
         </div>
          {/each}
@@ -371,4 +343,4 @@
             <p style="color: grey;"><span>No rooms available</span></p>
         {/if}
 </div>
-<p style="color:white">s</p>
+<p style="color:white">credit: angls4</p>

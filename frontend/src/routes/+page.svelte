@@ -6,7 +6,6 @@
     import Pong from "./pong.svelte";
     import {env} from '$env/dynamic/public'
 
-    let pongComponent;
     // FLAGS
     const CONNECTION_FAILED = 0;
     const REGISTER_FAILED = 1;
@@ -25,23 +24,20 @@
     // const PUBLIC_API = import.meta.env.VITE_PUBLIC_API
     // const PUBLIC_API_WT = import.meta.env.VITE_PUBLIC_API_WT
     // const PUBLIC_API_WS = import.meta.env.VITE_PUBLIC_API_WS
-
+    
     // variables
+    let pongComponent;
     let input_name = ""
-    let id_user = null
+    let user_id = null
     let error_message = "";
     let error_timeout_id;
     
     onMount(() => {
-        console.log("mounted")
-        id_user = localStorage.getItem("id_user")
-        console.log("saved id_user",id_user)
-        if(id_user){
+        user_id = localStorage.getItem("user_id")
+        if(user_id){
+            console.log("logging in with saved user_id...",user_id)
             handleLogin();
         };
-        user.subscribe(value => {
-            console.log("user changed", value);
-        });
     });
 
      afterUpdate(() => {
@@ -54,14 +50,14 @@
     });
 
     function handleLogin() {
-        if(!input_name && !id_user) {
+        if(!input_name && !user_id) {
             error_message = "Please enter your nickname";
             return;
         }
         const url = `${PUBLIC_API}/login`
-        id_user = localStorage.getItem("id_user")
-        console.log(`logging in... name=${input_name} id=${id_user} host=${url}`);
-        const data = { name: input_name, id: id_user ?? undefined };
+        user_id = localStorage.getItem("user_id")
+        console.log(`logging in... name=${input_name} id=${user_id} host=${url}`);
+        const data = { name: input_name, id: user_id ?? undefined };
         $state = "logging in";
         fetch(url, {
             method: 'POST',
@@ -83,7 +79,7 @@
                 user.set(data.user)
                 reconnect()
                 .then(()=>{
-                    localStorage.setItem("id_user", $user.id);
+                    localStorage.setItem("user_id", $user.id);
                 })
                 .catch(error => {
                     console.error(error);
@@ -91,8 +87,8 @@
                 })
             } else {
                 error_message = data.message ?? "Error logging in";
-                localStorage.clear('id_user')
-                id_user = null
+                localStorage.clear('user_id')
+                user_id = null
                 user.set(null)
                 $state = "login page";
             }
@@ -478,7 +474,7 @@ input::placeholder{
             <p>{error_message}</p>
         </div>
     {/if}
-{:else if $state !== "room list" && $state !== "play"}
+{:else if $state !== "room list" && $state !== "game room"}
     <h2>{$state}</h2>
 {/if}
 </div>
@@ -489,7 +485,7 @@ input::placeholder{
 
 </div>
 </div>
-<div hidden={$state !== "play"}>
+<div hidden={$state !== "game room"}>
     <Pong bind:this={pongComponent}/>
 </div>
 </body>

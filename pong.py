@@ -46,11 +46,9 @@ async def list_room_get(request):
         "status": "success",
         "rooms": [room.get_dict() for room in rooms.values()]
     }
-    # print([room.__dict__ for room in rooms.values()])
     return JSONResponse(res)
 
 async def create_room_post(request):
-    # Assuming you want to echo back the received JSON data
     data = await request.json()
     try:
         if data.get("name") == "":
@@ -58,12 +56,11 @@ async def create_room_post(request):
         if data.get("ballSpeedY") == "" or data.get("ballSpeedX") == "":
             return error_response(400, "ball speed cannot be empty")
         roomConfig: RoomConfig = RoomConfig(**data)
-        print(data)
         utc = datetime.datetime.now(datetime.UTC).timestamp()
         room_id = hash_number_to_alphanumeric(utc, ROOM_ID_LENGTH)
         room:Room = Room(room_id, roomConfig)
-        print(room.get_dict())
         rooms[room_id] = room
+        print("room created",room.get_dict())
         res = {
             "code": 200,
             "status": "success",
@@ -75,28 +72,24 @@ async def create_room_post(request):
         return error_response(500, "failed creating room")
 
 async def join_room_post(request):
-    # print(users)
-    # print(rooms)
     data: RoomJoinForm = await request.json()
-    # print(data)
     room_id = data.get("room_id")
     user_id = data.get("user_id")
     if(room_id and user_id):
         room = rooms.get(room_id)
         user = users.get(user_id)
         if room and user:
-            # password = data["password"]
             if room.gameState.players.get(user.id):
                 res = {
                     "code": 200,
                     "status": "success",
                     "room": room.get_dict(),
                     "user": user.get_dict(),
-                    # "gameState": room.gameState.getState()
                 }
                 return JSONResponse(res)
             if len(room.gameState.players) < 2:
                 room.add_player(user)
+                # send game state to both players
                 players = list(room.gameState.players.values())
                 try:
                     if(len(players) == 2):
@@ -109,7 +102,6 @@ async def join_room_post(request):
                     "status": "success",
                     "room": room.get_dict(),
                     "user": user.get_dict()
-                    # "gameState": room.gameState.getState()
                 }
                 return JSONResponse(res)
             else:
@@ -118,8 +110,6 @@ async def join_room_post(request):
             return error_response(400, "room not found or user not found")
     else:
         return error_response(400, "invalid data")
-    # print(data)
-    # return JSONResponse(data)
 
 async def leave_room_post(request):
     try:
@@ -253,10 +243,13 @@ def start_transmtting_state(connection: Connection):
 
 async def transmitting_state(connection: Connection):
     while not connection.closed:
-        await asyncio.sleep(UPDATE_INTERVAL)
-        if connection.user and connection.user.room and connection.user.room.gameState and connection.user.room.gameState.isRunning:
-            state = connection.user.room.gameState.get_dict()
-            await connection.send(state)
+        try:
+            await asyncio.sleep(UPDATE_INTERVAL)
+            if connection.user and connection.user.room and connection.user.room.gameState and connection.user.room.gameState.isRunning:
+                state = connection.user.room.gameState.get_dict()
+                await connection.send(state)
+        except Exception as e:
+            print(e)
 
 async def ws(websocket: WebSocket):
     # accept connection

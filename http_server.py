@@ -139,9 +139,7 @@ class WebTransportHandler:
             self.closed = True
         self.transmit()
 
-
 # Handler = Union[HttpRequestHandler, WebSocketHandler, WebTransportHandler]
-
 
 
 class HttpServerProtocol(QuicConnectionProtocol):

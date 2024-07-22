@@ -4,17 +4,20 @@
     import { connection, user, state } from "$lib/store";
     import { json } from "@sveltejs/kit";
 
-    let canvas;
-    let ws_canvas;
-    let ctx;
-    let ws_ctx
-    let requestId;
-    let show_ws = false;
+    // CONSTANTS
     const TRANSMIT_INTERVAL = 1000 / 30;
+    
     const hostUrl = window.location.origin;
     const PUBLIC_API = hostUrl;
     const PUBLIC_API_WT = hostUrl
     const PUBLIC_API_WS =  hostUrl;   
+    // VARIABLES
+    let canvas;
+    let ws_canvas;
+    let ctx;
+    let ws_ctx
+    let drawRequestId;
+    let show_ws = false;
     let initialState;
     let playerIndex = 0;
     let roomConfig = {
@@ -62,20 +65,6 @@
         paddleY: Math.floor(roomConfig.height / 2),
     }
 
-    //   const ball = {
-    //     x: null,
-    //     y: null,
-    //     radius: 10,
-    //     speedX: 2,
-    //     speedY: 2,
-    //   };
-
-    //   const paddleWidth = 10;
-    //   const paddleHeight = 100;
-    //   let leftPaddleY = 50;
-    //   let rightPaddleY = 150;
-    //   const paddleSpeed = 2;
-
     function initializeGame() {
         console.log("Initializing game")
         ctx = canvas.getContext("2d");
@@ -86,16 +75,6 @@
         drawLoop();
         transmitLoop();
     }
-    export function setPlayerSide(){
-        const index = gameState.players.findIndex(player => player.user.id == $user.id);
-        if(index > -1){
-            playerIndex = index;
-            // playerIndex = gameState.p0index == $user.id ? 0 : 1;
-        }
-        else{
-            console.error("Player not found in game state", gameState.players, $user.id);
-        }
-    }
     export function setState(newState) {
         try{
             newState.players[$user.id].paddleY = localState.paddleY;
@@ -104,13 +83,9 @@
             console.error("Error in converting state", e);
         }
         gameState = {...newState};
-        // if (newState?.players?.[playerIndex]?.paddleY)
     }
     export function setRoomConfig(newRoomConfig){
         roomConfig = {...newRoomConfig};
-    }
-    export function setRunning(isRunning){
-        gameState.isRunning = isRunning;
     }
 
     async function transmitLoop() {
@@ -118,20 +93,15 @@
             await new Promise(resolve => setTimeout(resolve, TRANSMIT_INTERVAL));
             try{
                 if(gameState.isRunning){
-                    // console.log("Transmitting", localState.paddleY)
                     if ($connection.connected) {
                         let uint8Array = new Uint8Array(Uint16Array.of(localState.paddleY).buffer);
                         let resultArray = [1, uint8Array[0], uint8Array[1]];
                         const message = Uint8Array.of(...resultArray);
-                        // console.log("Transmitting", message  )
                         $connection.wt.send(message);
                     } else {
                         console.error("Connection not ready");
                         continue;
                     }
-                }
-                else{
-                    // console.log("Game not running");
                 }
             }
             catch(e){
@@ -140,16 +110,16 @@
             
         }
     }
+
     function drawLoop() {
         try{
-            // console.log("Drawing")
             draw(ctx,gameState);
             draw(ws_ctx,ws_gameState);
         }
         catch(e){
             console.error("Error in draw loop", e);
         }
-        requestId = requestAnimationFrame(drawLoop);
+        drawRequestId = requestAnimationFrame(drawLoop);
     }
     function draw(ctx,gameState) {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
@@ -199,7 +169,7 @@
 
     // Cleanup on component destroy
     onDestroy(() => {
-        cancelAnimationFrame(requestId);
+        cancelAnimationFrame(drawRequestId);
     });
 
     // Example of moving paddles (expand upon this for actual control)
@@ -253,20 +223,14 @@
         }
 
     $connection.addListener('wt',(protocol, message) => {
-        // console.log("WT listened canvas", message);
-        // if(gameState.isRunning){
-            setState(message);
-        // }
+        setState(message);
     });
     $connection.addListener('ws',(protocol, message) => {
-        // console.log("WS listened canvas", message);
-        // if(gameState.isRunning){
-            ws_gameState = {...message};
-        // }
+        ws_gameState = {...message};
     });
 
     state.subscribe(value => {
-        if(value == "play"){
+        if(value == "game room"){
             setRoomConfig({
                 name: $user.room.name,
                 width: $user.room.width,
@@ -277,17 +241,13 @@
                 ballSpeedX: $user.room.ballSpeedX,
                 ballSpeedY: $user.room.ballSpeedY,
             });
-            // initialState = $user.room.gameState;
             setState($user.room.gameState)
-            // setPlayerSide();
         }
     });
     function toggle_ws(){
         show_ws = !show_ws;
     }
 </script>
-
-<!-- <svelte:window on:keydown={movePaddle} /> -->
 
 <style>
     .scoreboard {
@@ -338,9 +298,14 @@
         font-family:sans-serif;
         font-size:3vh;;
     }
+    .game_button{
+        margin-right: 5px;
+        margin-left:5px;
+        margin-right: 5px;
+        margin-left:5px;
+    }
 </style>
 <div style="width: 800px;" class="cent">
-    
     <div class="scoreboard">
         <div class="player1">
             <h3>{gameState?.players?.[gameState?.p0index]?.user?.name ?? "..."}</h3>
@@ -361,9 +326,9 @@
       style="background: black;"
     ></canvas>
     </p>
-    <button style="margin-right: 5px; margin-left:5px" on:click={handle_pause}>{gameState?.isRunning ? "pause" : "start"}</button>
-    <button style="margin-right: 5px; margin-left:5px" on:click={toggle_ws}>{show_ws ? "hide" : "show"} WS</button>
-    <button style="margin-right: 5px; margin-left:5px" on:click={handle_leave}>leave</button>
+    <button class="game_button" on:click={handle_pause}>play/pause</button>
+    <button class="game_button" on:click={toggle_ws}>{show_ws ? "hide" : "show"} ws</button>
+    <button class="game_button" on:click={handle_leave}>leave</button>
     <p>
     <canvas
     hidden={!show_ws}
