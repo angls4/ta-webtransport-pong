@@ -334,7 +334,7 @@
         </div>
     {/if}
     <h1 class="card__title">PONG</h1>
-    <h2 >Welcome, {$user.name}</h2>
+    <h2 >Welcome, {$user?.name}</h2>
     <div class="room" style="display: block;">
     <input type="text" bind:value={user_name} placeholder="New nickname" maxlength="20" />
     <button class="button-small" on:click={handle_rename}>rename user</button>

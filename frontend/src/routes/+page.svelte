@@ -6,8 +6,16 @@
     import Pong from "./pong.svelte";
     import {env} from '$env/dynamic/public'
 
-
     let pongComponent;
+    // FLAGS
+    const CONNECTION_FAILED = 0;
+    const REGISTER_FAILED = 1;
+    const REGISTER_SUCCESS = 2;
+    // CONSTANTS
+    const RECONNECT_INTERVAL = env.RECONNECT_INTERVAL ?? 3; // seconds
+    const ERROR_CLEAR_TIMEOUT = 3000; //milliseconds
+    const REGISTRATION_TIMEOUT = 5000; //milliseconds
+    
     const hostUrl = window.location.origin;
     const PUBLIC_API = hostUrl;
     const PUBLIC_API_WT = hostUrl
@@ -17,12 +25,13 @@
     // const PUBLIC_API = import.meta.env.VITE_PUBLIC_API
     // const PUBLIC_API_WT = import.meta.env.VITE_PUBLIC_API_WT
     // const PUBLIC_API_WS = import.meta.env.VITE_PUBLIC_API_WS
+
+    // variables
     let input_name = ""
     let id_user = null
-    $state = "login page";
     let error_message = "";
-    let error_timeout;
-
+    let error_timeout_id;
+    
     onMount(() => {
         console.log("mounted")
         id_user = localStorage.getItem("id_user")
@@ -37,10 +46,10 @@
 
      afterUpdate(() => {
         if (error_message) {    
-            clearTimeout(error_timeout);
-            error_timeout = setTimeout(() => {
+            clearTimeout(error_timeout_id);
+            error_timeout_id = setTimeout(() => {
                 error_message = "";
-            }, 3000);
+            }, ERROR_CLEAR_TIMEOUT);
         }
     });
 
@@ -131,9 +140,21 @@
         return 2
     }
 
+    async function registerWt() {
+        console.log("registering webtransport...");
+        await $connection.wt.send_reliable(Uint8Array.of(0, ...new TextEncoder().encode($user.id)));
+        $connection.wt.register_status = "registering";
+        return await waitForRegistration($connection.wt);
+    }
+    async function registerWs() {
+        console.log("registering websocket...");
+        await $connection.ws.send_reliable(Uint8Array.of(0, ...new TextEncoder().encode($user.id)));
+        $connection.ws.register_status = "registering";
+        return await waitForRegistration($connection.ws);
+    }
     async function waitForRegistration(transport){
         console.log("waiting for registration...", transport);
-        const timeoutDuration = 5000; // Timeout after 5000 milliseconds (5 seconds)
+        const timeoutDuration = REGISTRATION_TIMEOUT;
         const waitForRegistration = new Promise((resolve, reject) => {
             const intervalId = setInterval(() => {
                 if (transport.register_status === "registered") {
@@ -156,19 +177,6 @@
             });
     }
 
-    async function registerWt() {
-        console.log("registering webtransport...");
-        await $connection.wt.send_reliable(Uint8Array.of(0, ...new TextEncoder().encode($user.id)));
-        $connection.wt.register_status = "registering";
-        return await waitForRegistration($connection.wt);
-    }
-    async function registerWs() {
-        console.log("registering websocket...");
-        await $connection.ws.send_reliable(Uint8Array.of(0, ...new TextEncoder().encode($user.id)));
-        $connection.ws.register_status = "registering";
-        return await waitForRegistration($connection.ws);
-    }
-    
     $connection.addListener = (protocol,listener) => {
         if ($connection[protocol+"_listeners"] == null) {
             $connection[protocol+"_listeners"] = [];
@@ -210,37 +218,36 @@
     function pause(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
-    async function handle_disconnect(transport){
-        if(!$connection.connected) return;
-        console.log("handling disconnect", transport);
-        try {
-            delete $connection[transport?.protocol];
-            delete $connection.ws;
-        } catch (error) {
-            console.log("error deleting transport", error);
-        }
-        $connection.connected = false;
-        await reconnect();
+async function handle_disconnect(transport){
+    if(!$connection.connected) return;
+    console.log("webtransport disconnected, handling...");
+    try {
+        delete $connection.wt;
+        delete $connection.ws;
+    } catch (error) {
+        console.log("error deleting transport", error);
     }
-    async function reconnect(){
-        console.log("reconnecting...");
-        $state = "reconnecting";
-        while (true) {
-            console.log("reconnecting...")
-            const success = await connectTransport();
-            if (success === 2 || success === 1) {
-                if(success === 1) {
-                    console.log("reconnected, but failed registering");
-                    window.location.href = "/";
-                }
-                else console.log("reconnected");
-                $state = "room list";
-                break;
-            }
-            console.log("reconnecting again in 3 sec...")
-            await pause(3000);
+    $connection.connected = false;
+    await reconnect();
+}
+async function reconnect(){
+    $state = "reconnecting";
+    while (true) {
+        console.log("reconnecting...")
+        const code = await connectTransport();
+        if(code == REGISTER_FAILED) {
+            console.log("reconnected, but failed registering. returning to login page...");
+            window.location.href = "/";
         }
+        else if (code == REGISTER_SUCCESS) {
+            console.log("reconnected");
+            $state = "room list";
+            break;
+        }
+        console.log(`reconnecting again in ${RECONNECT_INTERVAL} sec...`)
+        await pause(RECONNECT_INTERVAL * 1000);
     }
+}
     function hexStringToArrayBuffer(hexString) {
         // Remove the colons
         let cleanHexString = hexString.replace(/:/g, '');
@@ -261,127 +268,128 @@
 
         return buffer;
     }
-    async function createWt() {
-        const url = `${PUBLIC_API_WT}/wt`
-        // create connection
-        const transport = new WebTransport(url,{serverCertificateHashes:[{algorithm:"sha-256",value:hexStringToArrayBuffer()}]});
-        transport.closed.then(() => {
-            console.log('WebTransport closed', transport);
-            handle_disconnect(transport);
-        })
-        .catch((error) => {
-            console.error('WebTransport connection died:', error, transport);
-            handle_disconnect(transport);
-        })
-        console.log('webtransport connecting...',url)
-        // wait for connection accepted
-        const success = await transport.ready
-        .then(() => {
-            console.log('WebTransport connected', transport);
-            return true;
-        })
-        .catch((error) => {
-            console.error('WebTransport connection failed:', error);
-            return false;
-        })
-        if(!success) return false;
 
-        const wt = {
-            protocol: "wt",
-            register_status: "unregistered",
-            transport,
-        };
-        // unreliable (datagram)
-        const datagrams = wt.transport.datagrams;
-        const writer_datagram = datagrams.writable.getWriter();
-        const reader_datagram = datagrams.readable.getReader();
-        wt.send = (message) => {
-            writer_datagram.write(message)
-        }
-        // start receiving datagrams
-        (async function() {
-            while (true) {
-                const { value: message, done } = await reader_datagram.read();
-                if (done) {
-                    console.log("Done reading datagram, stop reading...", value);
-                    return;
-                }
-                handle_message(wt,handle_datagram_bytes(message));
-            }
-        })()
-        .catch((error) => {
-            console.error('reading datagram failed, stop reading...:', error);
-        })
-        // reliable (stream)
-        const stream = await transport.createBidirectionalStream();
-        const writer_stream = stream.writable.getWriter();
-        const reader_stream = stream.readable.getReader();
-        wt.send_reliable = (message) => {
-            writer_stream.write(message)
-        };
-        // start receiving stream
-        (async function() {
-            while (true) {
-                const { value: message, done } = await reader_stream.read();
-                if (done) {
-                    console.log("Done reading stream, stop reading...", value);
-                    return;
-                }
-                handle_message(wt,handle_datagram_bytes(message));
-            }
-        })()
-        .catch((error) => {
-            console.error('reading datagram failed, stop reading...:', error);
-        })
-        $connection.wt = wt;
+async function createWt() {
+    const url = `${PUBLIC_API_WT}/wt`
+    // create connection
+    const transport = new WebTransport(url,{serverCertificateHashes:[{algorithm:"sha-256",value:hexStringToArrayBuffer(HTTP3_CERTIFICATE_FINGERPRINT)}]});
+    transport.closed.then(() => {
+        console.log('WebTransport closed', transport);
+        handle_disconnect(transport);
+    })
+    .catch((error) => {
+        console.error('WebTransport connection died:', error, transport);
+        handle_disconnect(transport);
+    })
+    console.log('webtransport connecting...',url)
+    // wait for connection accepted
+    const success = await transport.ready
+    .then(() => {
+        console.log('WebTransport connected', transport);
         return true;
+    })
+    .catch((error) => {
+        console.error('WebTransport connection failed:', error);
+        return false;
+    })
+    if(!success) return false;
+
+    const wt = {
+        protocol: "wt",
+        register_status: "unregistered",
+        transport,
+    };
+    // unreliable (datagram)
+    const datagrams = wt.transport.datagrams;
+    const writer_datagram = datagrams.writable.getWriter();
+    const reader_datagram = datagrams.readable.getReader();
+    wt.send = (message) => {
+        writer_datagram.write(message)
     }
-
-    async function createWs() {
-        const url = `${PUBLIC_API_WS}/ws`;
-        const transport = new WebSocket(url);
-        console.log('websocket connecting...',url);
-
-        const success = await new Promise((resolve, reject) => {
-            transport.onopen = () => {
-                console.log(transport, 'WebSocket connected');
-                resolve(true);
-            };
-            transport.onerror_message = (error) => {
-                console.error('WebSocket error:', error);
-                reject(error);
-            };
-        })
-        .catch((error) => {
-            console.error('WebSocket $connection failed:', error);
-            return false;
-        })
-        if(!success) return false;
-
-        const ws = {
-            protocol: "ws",
-            register_status: "unregistered",
-            transport,
-        };
-        // unreliable
-        // reliable
-        ws.send_reliable = (message) => {
-            ws.transport.send(message);
-        }
-        // start receiving messages
-        transport.addEventListener('message', (event) => {
-            handle_message(ws,JSON.parse(event.data));
-        });
-        transport.addEventListener('close', (event) => {
-            if (event.wasClean) {
-                console.log('WebSocket closed', event);
-            } else {
-                console.error('WebSocket $connection died', event);
+    // start receiving datagrams
+    (async function() {
+        while (true) {
+            const { value: message, done } = await reader_datagram.read();
+            if (done) {
+                console.log("Done reading datagram, stop reading...", value);
+                return;
             }
-        });
-        $connection.ws = ws;
-        return true;
+            handle_message(wt,handle_datagram_bytes(message));
+        }
+    })()
+    .catch((error) => {
+        console.error('reading datagram failed, stop reading...:', error);
+    })
+    // reliable (stream)
+    const stream = await transport.createBidirectionalStream();
+    const writer_stream = stream.writable.getWriter();
+    const reader_stream = stream.readable.getReader();
+    wt.send_reliable = (message) => {
+        writer_stream.write(message)
+    };
+    // start receiving stream
+    (async function() {
+        while (true) {
+            const { value: message, done } = await reader_stream.read();
+            if (done) {
+                console.log("Done reading stream, stop reading...", value);
+                return;
+            }
+            handle_message(wt,handle_datagram_bytes(message));
+        }
+    })()
+    .catch((error) => {
+        console.error('reading datagram failed, stop reading...:', error);
+    })
+    $connection.wt = wt;
+    return true;
+}
+
+async function createWs() {
+    const url = `${PUBLIC_API_WS}/ws`;
+    const transport = new WebSocket(url);
+    console.log('websocket connecting...',url);
+
+    const success = await new Promise((resolve, reject) => {
+        transport.onopen = () => {
+            console.log(transport, 'WebSocket connected');
+            resolve(true);
+        };
+        transport.onerror_message = (error) => {
+            console.error('WebSocket error:', error);
+            reject(error);
+        };
+    })
+    .catch((error) => {
+        console.error('WebSocket $connection failed:', error);
+        return false;
+    })
+    if(!success) return false;
+
+    const ws = {
+        protocol: "ws",
+        register_status: "unregistered",
+        transport,
+    };
+    // unreliable
+    // reliable
+    ws.send_reliable = (message) => {
+        ws.transport.send(message);
     }
+    // start receiving messages
+    transport.addEventListener('message', (event) => {
+        handle_message(ws,JSON.parse(event.data));
+    });
+    transport.addEventListener('close', (event) => {
+        if (event.wasClean) {
+            console.log('WebSocket closed', event);
+        } else {
+            console.error('WebSocket $connection died', event);
+        }
+    });
+    $connection.ws = ws;
+    return true;
+}
 
 </script>
 

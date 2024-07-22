@@ -26,17 +26,19 @@ from starlette.middleware.cors import CORSMiddleware
 # STATIC_URL = "/"
 # LOGS_PATH = os.path.join(STATIC_ROOT, "logs")
 # QVIS_URL = "https://qvis.quictools.info/"
+
+# FLAGS
+FLAG_REGISTER = 0
+FLAG_GAME_STATE = 1
+FLAG_START_PAUSE = 2
+# CONSTANTS
 FRONTEND_PATH = "frontend/build"
 USER_ID_LENGTH = 4
 ROOM_ID_LENGTH = 5
-FLAG_LOGIN = 0
-FLAG_PADDLE_Y = 1
-FLAG_START_PAUSE = 2
 UPDATE_INTERVAL = 1 / 60
 
 rooms:dict[str, Room] ={}
 users:dict[str, User] ={}
-connections:dict[str, Connection] ={}
 
 async def list_room_get(request):
     res = {
@@ -47,20 +49,6 @@ async def list_room_get(request):
     # print([room.__dict__ for room in rooms.values()])
     return JSONResponse(res)
 
-async def get_room_get(request):
-    room_id = request.path_params["id"]
-    room = rooms.get(room_id)
-    if room:
-        res = {
-            "code": 200,
-            "status": "success",
-            "room": room.get_dict()
-        }
-        return JSONResponse(res)
-    else:
-        return error_response(404, "room not found")
-
-# Define a new endpoint function for handling POST requests
 async def create_room_post(request):
     # Assuming you want to echo back the received JSON data
     data = await request.json()
@@ -155,12 +143,12 @@ async def leave_room_post(request):
                     }
                     if len(room.gameState.players) == 0:
                         rooms.pop(room.id)
-                    try:
-                        players = list(room.gameState.players.values())
-                        if(len(players) == 1):
+                    players = list(room.gameState.players.values())
+                    if(len(players) == 1):
+                        try:
                             asyncio.create_task(players[0].user.connection.send(room.gameState.get_dict()))
-                    except Exception as e:
-                        print(e)
+                        except Exception as e:
+                            print(e)
                 else:
                     return error_response(400, "user not found in room")
                 return JSONResponse(res)
@@ -204,9 +192,10 @@ async def login_post(request):
     # print(res)
     return JSONResponse(res)
 
-def register_connection(id: str, connection: Connection, stream):
-    user = users.get(id)
+def register_connection(user_id: str, connection: Connection, stream):
+    user = users.get(user_id)
     if user:
+        # attach user to connection
         if connection.scope["type"] == "webtransport":
             user.connection = connection
         connection.user = user
@@ -214,11 +203,12 @@ def register_connection(id: str, connection: Connection, stream):
         start_transmtting_state(connection)
         return True
     else:
-        print("user not found", id)
+        print("user not found", user_id)
         connection.closed = True
         return False
 
-def handle_received_state(connection: Connection, paddleY: int):
+def handle_received_state(connection: Connection, message: bytes):
+    paddleY = int.from_bytes(message[1:],'little')
     if connection.user and connection.user.player and paddleY > 0:
         connection.user.player.paddleY = paddleY
         return True
@@ -229,17 +219,17 @@ def handle_received_state(connection: Connection, paddleY: int):
 def handle_start_pause(connection: Connection, stream):
     if connection.user and connection.user.room:
         players = list(connection.user.room.gameState.players.values())
-        current = connection.user.room.gameState.isRunning
-        if current is False and len(players) == 2:
+        isRunning = connection.user.room.gameState.isRunning
+        if isRunning is False and len(players) == 2:
             connection.user.room.gameState.isRunning = True
         else:
             connection.user.room.gameState.isRunning = False
         if(len(players) == 2):
-            asyncio.create_task(players[0].user.connection.send(connection.user.room.gameState.get_dict(), True, stream))
-            asyncio.create_task(players[1].user.connection.send(connection.user.room.gameState.get_dict(), True, stream))
-        # asyncio.create_task(connection.send(connection.user.room.gameState.get_dict(), True, stream))
-        #         , True, players[0].user.connection.stream
-        # , True, players[1].user.connection.stream
+            try:
+                asyncio.create_task(players[0].user.connection.send(connection.user.room.gameState.get_dict(), True, stream))
+                asyncio.create_task(players[1].user.connection.send(connection.user.room.gameState.get_dict(), True, stream))
+            except Exception as e:
+                print(e)
         return True
     else:
         print("user or room not found", connection.user)
@@ -247,17 +237,14 @@ def handle_start_pause(connection: Connection, stream):
 
 def handle_message(message: bytes, connection: Connection, stream = None):
     # read flag
-    # print("handling message", message)
     flag: int = message[0]
-    # print("paddleY", message,flag)
-    if flag is FLAG_LOGIN:
-        id: str = message[1:].decode('utf-8')
-        return register_connection(id, connection, stream)
-    if flag is FLAG_PADDLE_Y:
-        paddleY: str = int.from_bytes(message[1:],'little')
-        return handle_received_state(connection, paddleY)
+    # handle the payload
+    if flag is FLAG_REGISTER:
+        user_id: str = message[1:].decode('utf-8')
+        return register_connection(user_id, connection, stream)
+    if flag is FLAG_GAME_STATE:
+        return handle_received_state(connection, message)
     if flag is FLAG_START_PAUSE:
-        # paddleY: str = int.from_bytes(message[1:])
         return handle_start_pause(connection, stream)
     return False
 
@@ -271,65 +258,38 @@ async def transmitting_state(connection: Connection):
             state = connection.user.room.gameState.get_dict()
             await connection.send(state)
 
-
 async def ws(websocket: WebSocket):
-    """
-    WebSocket echo endpoint.
-    """
-    if "chat" in websocket.scope["subprotocols"]:
-        subprotocol = "chat"
-    else:
-        subprotocol = None
-    await websocket.accept(subprotocol=subprotocol)
-    id = websocket.scope["client"][0] + "-" + str(websocket.scope["client"][1])
-    print(id)
+    # accept connection
+    await websocket.accept()
+    # wrap/normalize send function
     def send_wrapped(data: dict, realiable: bool = False, stream = None):
         return websocket.send_json(data)
+    # initialize connection object
+    id = websocket.scope["client"][0] + "-" + str(websocket.scope["client"][1])
+    print("ws connected",id)
     connection = Connection(id, websocket.scope, send_wrapped, websocket.receive_bytes)
     try:
         while True:
+            # handle connection close
             if connection.closed:
-                print("closing websocket")
+                print("ws closing",id)
+                # close connection
                 websocket.close()
                 break
+            # retrieve message
             message = await websocket.receive_bytes()
             result = handle_message(message, connection)
             if result == False:
                 connection.closed = True
     except WebSocketDisconnect:
         connection.closed = True
-        pass
-    if connection.closed:
-        if connection.user and connection.user.room:
-                room = connection.user.room
-                room.pause()
-                players = list(room.gameState.players.values())
-                try:
-                    if(len(players) == 2):
-                        asyncio.create_task(players[0].user.connection.send(room.gameState.get_dict()))
-                        asyncio.create_task(players[1].user.connection.send(room.gameState.get_dict()))
-                except Exception as e:
-                    print(e)
-
-def print_close_event(handler: WebTransportHandler):
-    closeEvent = handler.connection._quic._close_event
-    state = handler.connection._quic._state
-    # print("close event", closeEvent, state)
-    if closeEvent is not None:
-        return False
-    return True
 
 async def wt(handler: WebTransportHandler, scope: Scope, receive: Receive, send: Send) -> None:
-    """
-    WebTransport echo endpoint.
-    """
     # accept connection
     wt_message = await receive()
     assert wt_message["type"] == "webtransport.connect"
     await send({"type": "webtransport.accept"})
-
-    id = scope["client"][0] + '-' + str(scope["client"][1])
-    print(id)
+    # wrap/normalize send function
     def send_wrapped(data: dict, reliable: bool = False, stream = None):
         data_encoded = json.dumps(data).encode("utf-8")
         messageType = ""
@@ -344,31 +304,34 @@ async def wt(handler: WebTransportHandler, scope: Scope, receive: Receive, send:
                 return
             payload["stream"] = stream
         return send(payload)
+    # initialize connection object
+    id = scope["client"][0] + '-' + str(scope["client"][1])
+    print("wt connected",id)
     connection = Connection(id, scope, send_wrapped, receive)
-
-    asyncio.create_task(
-        setInterval(print_close_event, 1, handler  )
-    )
+    stream = None
     while True:
+        # handle connection close
         if connection.closed:
-            print("closing webtransport")
+            print("wt closing",id)
+            # pause room if exists
             if connection.user and connection.user.room:
                 room = connection.user.room
                 room.pause()
                 players = list(room.gameState.players.values())
-                try:
-                    if(len(players) == 2):
+                if(len(players) == 2):
+                    try:
                         asyncio.create_task(players[0].user.connection.send(room.gameState.get_dict(),True,stream))
                         asyncio.create_task(players[1].user.connection.send(room.gameState.get_dict(),True,stream))
-                except Exception as e:
-                    print(e)
+                    except Exception as e:
+                        print(e)
+            # close connection
             handler.connection._quic.close()
             handler.closed = True
             break
+        # retrieve message
         try:
             wt_message = await asyncio.wait_for(receive(), timeout=10)
         except asyncio.TimeoutError:
-            # print("timeout")
             if(handler.connection._quic._close_event is not None or handler.connection._quic._state == 4):
                 connection.closed = True
             continue
@@ -379,17 +342,24 @@ async def wt(handler: WebTransportHandler, scope: Scope, receive: Receive, send:
             connection.closed = True
             continue
 
+
+# def print_close_event(handler: WebTransportHandler):
+#     closeEvent = handler.connection._quic._close_event
+#     state = handler.connection._quic._state
+#     # print("close event", closeEvent, state)
+#     if closeEvent is not None:
+#         return False
+#     return True
+
 starlette = Starlette(
     debug=True,
     routes=[
         Route("/list_room", list_room_get),
-        Route("/get_room", get_room_get),
         Route("/login", login_post, methods=["POST"]),
         Route("/leave_room", leave_room_post, methods=["POST"]),
         Route("/join_room", join_room_post, methods=["POST"]),
         Route("/create_room", create_room_post, methods=["POST"]),
         WebSocketRoute("/ws", ws),
-        # Mount(STATIC_URL, StaticFiles(directory=STATIC_ROOT, html=True)),
         Mount("/", StaticFiles(directory=FRONTEND_PATH, html=True), name="frontend"),
     ],
 )
