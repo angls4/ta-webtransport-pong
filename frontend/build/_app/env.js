@@ -1,1 +1,1 @@
-export const env={"PUBLIC_API":"http://localhost"}
+export const env={"PUBLIC_API":"http://localhost","PUBLIC_HTTP3_CERTIFICATE_FINGERPRINT":"43:6E:11:10:0C:94:51:4C:10:FD:D8:F6:46:5F:DD:A4:18:70:EC:11:44:8E:C0:4D:A4:1A:B9:69:23:C3:7B:95","PUBLIC_RECONNECT_INTERVAL":"3"}
