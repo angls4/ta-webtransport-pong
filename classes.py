@@ -81,8 +81,10 @@ class State:
         }
 
 class Room(RoomConfig):
-    def __init__(self, id: str, roomConfig: RoomConfig, state: State = State()):
+    def __init__(self, id: str, roomConfig: RoomConfig, state: State = None):
         super().__init__(**roomConfig.__dict__)
+        if state is None:
+            state = State()
         self.gameState: GameState = GameState(self,state)
         self.id = id
     def get_dict(self):
@@ -133,7 +135,9 @@ class Room(RoomConfig):
 
 
 class GameState(State):
-    def __init__(self, room: Room, state: State = State()):
+    def __init__(self, room: Room, state: State = None):
+        if state is None:
+            state = State()
         super().__init__(**state.__dict__)
         self.room = room
         self.reset()
@@ -161,8 +165,10 @@ class GameState(State):
         self.room.ballSpeedX *= -1
 
     def reset_score(self):
+        print(self.players)
         if len(self.players) == 0:
             return
+        print("bodoh")
         self.players[self.p0index].score = 0
         self.players[self.p1index].score = 0
 

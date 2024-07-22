@@ -20,4 +20,4 @@ const _user = {
 }
 export const connection = writable(_connection);
 export const user = writable(_user);
-export const state = writable('idle');
+export const state = writable('login page');

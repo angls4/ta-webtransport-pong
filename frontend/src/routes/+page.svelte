@@ -12,13 +12,14 @@
     const PUBLIC_API = hostUrl;
     const PUBLIC_API_WT = hostUrl
     const PUBLIC_API_WS =  hostUrl;   
+    const HTTP3_CERTIFICATE_FINGERPRINT = env.HTTP3_CERTIFICATE_FINGERPRINT ?? "43:6E:11:10:0C:94:51:4C:10:FD:D8:F6:46:5F:DD:A4:18:70:EC:11:44:8E:C0:4D:A4:1A:B9:69:23:C3:7B:95"
     // const PUBLIC_API = env.PUBLIC_API
     // const PUBLIC_API = import.meta.env.VITE_PUBLIC_API
     // const PUBLIC_API_WT = import.meta.env.VITE_PUBLIC_API_WT
     // const PUBLIC_API_WS = import.meta.env.VITE_PUBLIC_API_WS
     let input_name = ""
     let id_user = null
-    $state = "idle";
+    $state = "login page";
     let error_message = "";
     let error_timeout;
 
@@ -68,8 +69,6 @@
         })
         .then(data => {
             console.log("logged in with user", data);
-            // Handle the response data here
-            // Update the state based on the response
             if (data.code == 200) {
                 $state = "connecting transport";
                 user.set(data.user)
@@ -79,21 +78,20 @@
                 })
                 .catch(error => {
                     console.error(error);
-                    $state = "idle";
+                    $state = "login page";
                 })
             } else {
                 error_message = data.message ?? "Error logging in";
                 localStorage.clear('id_user')
                 id_user = null
                 user.set(null)
-                $state = "idle";
+                $state = "login page";
             }
         })
         .catch(error => {
-            // Handle any errors here
             error_message = error.message ?? "Error logging in";
             console.error(error);
-            $state = "idle";
+            $state = "login page";
         });
     }
 
@@ -106,13 +104,11 @@
             $state = "registering webTransport";
             if(!await registerWt()){
                 console.log("failed to register webTransport")
-                // $state = "idle";
                 return 1
             }
         }
         else{
             console.log("failed to connect webtransport")
-            // $state = "idle";
             return 0
         }
         console.log("Registered webTransport");
@@ -123,17 +119,15 @@
             $state = "registering webSocket";
             if(!await registerWs()){
                 console.log("failed to register webSocket")
-                // $state = "idle";
                 return 1
             }
         }
         else{
             console.log("failed to connect webSocket")
-            // $state = "idle";
             return 0
         }
         $connection.connected = true;
-        $state = "harusnya mainmenu";
+        $state = "room list";
         return 2
     }
 
@@ -240,7 +234,7 @@
                     window.location.href = "/";
                 }
                 else console.log("reconnected");
-                $state = "harusnya mainmenu";
+                $state = "room list";
                 break;
             }
             console.log("reconnecting again in 3 sec...")
@@ -248,62 +242,56 @@
         }
     }
     function hexStringToArrayBuffer(hexString) {
-    // Remove the colons
-    let cleanHexString = hexString.replace(/:/g, '');
+        // Remove the colons
+        let cleanHexString = hexString.replace(/:/g, '');
 
-    // Ensure the string length is even
-    if (cleanHexString.length % 2 !== 0) {
-        throw new Error('Invalid hex string');
+        // Ensure the string length is even
+        if (cleanHexString.length % 2 !== 0) {
+            throw new Error('Invalid hex string');
+        }
+
+        // Create an ArrayBuffer
+        let buffer = new ArrayBuffer(cleanHexString.length / 2);
+        let byteArray = new Uint8Array(buffer);
+
+        // Populate the Uint8Array with hexadecimal values
+        for (let i = 0; i < cleanHexString.length; i += 2) {
+            byteArray[i / 2] = parseInt(cleanHexString.substr(i, 2), 16);
+        }
+
+        return buffer;
     }
-
-    // Create an ArrayBuffer
-    let buffer = new ArrayBuffer(cleanHexString.length / 2);
-    let byteArray = new Uint8Array(buffer);
-
-    // Populate the Uint8Array with hexadecimal values
-    for (let i = 0; i < cleanHexString.length; i += 2) {
-        byteArray[i / 2] = parseInt(cleanHexString.substr(i, 2), 16);
-    }
-
-    return buffer;
-}
     async function createWt() {
         const url = `${PUBLIC_API_WT}/wt`
-        const transport = new WebTransport(url,{serverCertificateHashes:[{algorithm:"sha-256",value:hexStringToArrayBuffer("43:6E:11:10:0C:94:51:4C:10:FD:D8:F6:46:5F:DD:A4:18:70:EC:11:44:8E:C0:4D:A4:1A:B9:69:23:C3:7B:95")}]});
+        // create connection
+        const transport = new WebTransport(url,{serverCertificateHashes:[{algorithm:"sha-256",value:hexStringToArrayBuffer()}]});
         transport.closed.then(() => {
             console.log('WebTransport closed', transport);
             handle_disconnect(transport);
         })
         .catch((error) => {
-            console.error('WebTransport $connection died:', error, transport);
+            console.error('WebTransport connection died:', error, transport);
             handle_disconnect(transport);
         })
         console.log('webtransport connecting...',url)
+        // wait for connection accepted
         const success = await transport.ready
         .then(() => {
             console.log('WebTransport connected', transport);
             return true;
         })
         .catch((error) => {
-            console.error('WebTransport $connection failed:', error);
+            console.error('WebTransport connection failed:', error);
             return false;
         })
         if(!success) return false;
 
         const wt = {
-            // room_name,
             protocol: "wt",
-            // id: room_name + '-' + wt_count++,
             register_status: "unregistered",
             transport,
-            // text:"🥺",
-            // datagrams: transport.datagrams,
-            // stream: await transport.createBidirectionalStream(),
-            // writer: transport.datagrams.writable.getWriter(),
-            // reader: transport.datagrams.readable.getReader(),
-            isReading: false,
         };
-        // unreliable
+        // unreliable (datagram)
         const datagrams = wt.transport.datagrams;
         const writer_datagram = datagrams.writable.getWriter();
         const reader_datagram = datagrams.readable.getReader();
@@ -318,16 +306,13 @@
                     console.log("Done reading datagram, stop reading...", value);
                     return;
                 }
-                // let decoder = new TextDecoder("utf-8");
-                // let receivedText = decoder.decode(value);
-                // console.log("received datagram", message);
                 handle_message(wt,handle_datagram_bytes(message));
             }
         })()
         .catch((error) => {
             console.error('reading datagram failed, stop reading...:', error);
         })
-        // reliable
+        // reliable (stream)
         const stream = await transport.createBidirectionalStream();
         const writer_stream = stream.writable.getWriter();
         const reader_stream = stream.readable.getReader();
@@ -342,9 +327,6 @@
                     console.log("Done reading stream, stop reading...", value);
                     return;
                 }
-                // let decoder = new TextDecoder("utf-8");
-                // let receivedText = decoder.decode(value);
-                // console.log("received stream", message);
                 handle_message(wt,handle_datagram_bytes(message));
             }
         })()
@@ -357,15 +339,15 @@
 
     async function createWs() {
         const url = `${PUBLIC_API_WS}/ws`;
-        const socket = new WebSocket(url);
+        const transport = new WebSocket(url);
         console.log('websocket connecting...',url);
 
         const success = await new Promise((resolve, reject) => {
-            socket.onopen = () => {
-                console.log(socket, 'WebSocket connected');
+            transport.onopen = () => {
+                console.log(transport, 'WebSocket connected');
                 resolve(true);
             };
-            socket.onerror_message = (error) => {
+            transport.onerror_message = (error) => {
                 console.error('WebSocket error:', error);
                 reject(error);
             };
@@ -378,33 +360,24 @@
 
         const ws = {
             protocol: "ws",
-            // room_name,
-            // id: room_name + '-' + ws_count++,
             register_status: "unregistered",
-            transport: socket,
-            // text: "🥺",
-            isReading: false,
+            transport,
         };
         // unreliable
-        ws.send = (message) => {
-            ws.transport.send(message);
-        }
         // reliable
         ws.send_reliable = (message) => {
             ws.transport.send(message);
         }
         // start receiving messages
-        socket.addEventListener('message', (event) => {
-            // console.log('received websocket', event.data);
+        transport.addEventListener('message', (event) => {
             handle_message(ws,JSON.parse(event.data));
         });
-        socket.addEventListener('close', (event) => {
+        transport.addEventListener('close', (event) => {
             if (event.wasClean) {
                 console.log('WebSocket closed', event);
             } else {
                 console.error('WebSocket $connection died', event);
             }
-            // handle_disconnect(ws);
         });
         $connection.ws = ws;
         return true;
@@ -481,34 +454,28 @@ input::placeholder{
     font-weight: bold;
     margin-bottom: 10px;
 }
-
 </style>
 <body>
-<div>
+<!-- <div>
     <p>state = {$state}</p>
-</div>
+</div> -->
 
 <div class ="cent">
-{#if $state === "idle"}
-  <h1>username</h1>
-  <input type="text" placeholder="your nickname" bind:value={input_name} autocomplete="off" spellcheck="false" maxlength="20">
-  
-  <input type="submit" on:click={handleLogin} value="Enter">
+{#if $state === "login page"}
+    <h1>PONG</h1>
+    <input type="text" placeholder="your nickname" bind:value={input_name} autocomplete="off" spellcheck="false" maxlength="20">
+    <input type="submit" on:click={handleLogin} value="Enter">
     {#if error_message}
         <div class="error-message">
             <p>{error_message}</p>
         </div>
-        {/if}
-        <!-- <input class="login_input" type="text" bind:value={input_name} placeholder="Enter your name" />
-        <button class="login_submit" on:click={handleLogin}>Submit</button> -->
-        <!-- {:else if $state === "harusnya mainmenu" || $state === "play"} -->
-
-{:else if $state !== "harusnya mainmenu" && $state !== "play"}
-<h2>{$state}</h2>
+    {/if}
+{:else if $state !== "room list" && $state !== "play"}
+    <h2>{$state}</h2>
 {/if}
 </div>
 
-<div hidden={$state !== "harusnya mainmenu"}>
+<div hidden={$state !== "room list"}>
 <div class ="cent">
     <Rooms />
 

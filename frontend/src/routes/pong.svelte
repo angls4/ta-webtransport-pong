@@ -1,8 +1,8 @@
 <script>
-  //  @ts-nocheck
+//    @ts-nocheck
     import { onMount, onDestroy } from "svelte";
     import { connection, user, state } from "$lib/store";
-  import { json } from "@sveltejs/kit";
+    import { json } from "@sveltejs/kit";
 
     let canvas;
     let ws_canvas;
@@ -96,7 +96,7 @@
             console.error("Player not found in game state", gameState.players, $user.id);
         }
     }
-    export function setState(state,newState) {
+    export function setState(newState) {
         try{
             newState.players[$user.id].paddleY = localState.paddleY;
         }
@@ -241,7 +241,7 @@
                     console.log("Leave room successful");
                     $user = data.user;
                     // $user.room = null;
-                    $state = "harusnya mainmenu";
+                    $state = "room list";
                 } else {
                     // Handle error
                     console.error("Failed to leave room", data);
@@ -343,8 +343,8 @@
     
     <div class="scoreboard">
         <div class="player1">
-            <h3>{gameState?.players?.[gameState?.p0index]?.user?.name}</h3>
-            <p>Wins: {gameState?.players?.[gameState?.p0index]?.wins}</p>
+            <h3>{gameState?.players?.[gameState?.p0index]?.user?.name ?? "..."}</h3>
+            <p>Wins: {gameState?.players?.[gameState?.p0index]?.wins ?? 0}</p>
         </div>
         <h1>PONG</h1>
         <div class="player2">

@@ -22,7 +22,7 @@
         console.log("Rooms page mounted");
         state.subscribe(value => {
             console.log("State changed", value);
-            if(value = "harusnya mainmenu" && $connection.connected) {
+            if(value = "room list" && $connection.connected) {
                 console.log("User", $user)
                 if($user.room) {
                     if($user.room?.id)
@@ -213,6 +213,10 @@
         text-transform: uppercase;
         font-size: 3vh;
     }
+    h2 {
+        letter-spacing: 2px;
+        font-size: 2vh;
+    }
     input:hover, input:focus {
         cursor: pointer;
         transform: scale(1.1);
@@ -296,6 +300,11 @@
         box-shadow: 0 4px 6px -6px #222;
         transition: 0.3s;
     }
+    .button :disabled {
+        background: grey;
+        color: white;
+        cursor: not-allowed;
+    }
     .button-small {
         padding: 5px 10px;
         /* font-size: sm; */
@@ -325,6 +334,7 @@
         </div>
     {/if}
     <h1 class="card__title">PONG</h1>
+    <h2 >Welcome, {$user.name}</h2>
     <div class="room" style="display: block;">
     <input type="text" bind:value={user_name} placeholder="New nickname" maxlength="20" />
     <button class="button-small" on:click={handle_rename}>rename user</button>
@@ -351,11 +361,14 @@
                 <span class="room__detail">Ball speed : {Math.abs(room.ballSpeedX)}</span>
                 <span class="room__detail">{Object.keys(room.gameState.players).length}/2 Players</span>
             </div>
-            <div class="room__actions">
-                <button on:click={()=>handle_join_room(room)} class="button">JOIN</button>
+            <div>
+                <button on:click={()=>handle_join_room(room)} class="button" disabled={Object.keys(room.gameState.players).length >= 2}>JOIN</button>
             </div>
         </div>
          {/each}
-    </div>
+        </div>
+        {#if rooms.length == 0}
+            <p style="color: grey;"><span>No rooms available</span></p>
+        {/if}
 </div>
 <p style="color:white">s</p>
