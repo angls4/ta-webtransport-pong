@@ -3,6 +3,8 @@ import asyncio
 import selectors
 import logging
 import time
+
+import uvicorn.config
 import pong as asgi_app
 from collections import deque
 from email.utils import formatdate
@@ -273,7 +275,16 @@ async def main(
                 ws="wsproto",
                 http="auto",
                 port=port,
-                log_level= "info" if args.verbose else "warning",
+                log_level="info" if args.verbose else "warning",
+            )
+            if args.http
+            else uvicorn.Config(
+                asgi_app.http_app,
+                host=host,
+                ws="wsproto",
+                http="auto",
+                port=port,
+                log_level="info" if args.verbose else "warning",
                 ssl_certfile=HTTP_CERT,
                 ssl_keyfile=HTTP_KEY,
             )
@@ -340,6 +351,11 @@ if __name__ == "__main__":
     )
     parser.add_argument(
         "-v", "--verbose", action="store_true", help="increase logging verbosity"
+    )
+    parser.add_argument(
+        "--http",
+        action="store_true",
+        help="user unsecure http",
     )
     args = parser.parse_args()
 
