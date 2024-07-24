@@ -274,7 +274,7 @@ async def main(
                 host=host,
                 ws="wsproto",
                 http="auto",
-                port=port,
+                port=80 if args.http and port is 443 else port,
                 log_level="info" if args.verbose else "warning",
             )
             if args.http
