@@ -266,7 +266,8 @@ async def main(
     retry: bool,
     args
 ) -> None:
-    print(f"Listening on {host}:{port}")
+    port = 80 if args.http and port is 443 else port
+    print(f"Listening on {host}:{port}", "http" if args.http else "https")
     await asyncio.gather(
         serve_http(
             uvicorn.Config(
@@ -274,7 +275,7 @@ async def main(
                 host=host,
                 ws="wsproto",
                 http="auto",
-                port=80 if args.http and port is 443 else port,
+                port=port,
                 log_level="info" if args.verbose else "warning",
             )
             if args.http
