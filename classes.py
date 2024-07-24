@@ -144,7 +144,7 @@ class GameState(State):
         self.isRunning = False
         self.p0index = ""
         self.p1index = ""
-        asyncio.create_task(self.update_gamestate())
+        asyncio.create_task(self.tick())
 
     def get_dict(self) -> State:
         return {
@@ -172,7 +172,7 @@ class GameState(State):
         self.players[self.p0index].score = 0
         self.players[self.p1index].score = 0
 
-    async def update_gamestate(self):
+    async def tick(self):
         while True:
             try:
                 await asyncio.sleep(GAMESTATE_UPDATE_INTERVAL)
@@ -191,7 +191,6 @@ class GameState(State):
                     or self.ballY - self.room.ballRadius < 0
                 ):
                     self.room.ballSpeedY *= -1
-
                 # Collision detection with left paddle
                 if (
                     self.ballX - self.room.ballRadius < self.room.paddleWidth
@@ -200,7 +199,6 @@ class GameState(State):
                     < self.players[self.p0index].paddleY + self.room.paddleHeight
                 ):
                     self.room.ballSpeedX *= -1
-
                 # Collision detection with right paddle
                 if (
                     self.ballX + self.room.ballRadius
@@ -210,11 +208,9 @@ class GameState(State):
                     < self.players[self.p1index].paddleY + self.room.paddleHeight
                 ):
                     self.room.ballSpeedX *= -1
-
                 # Update ball position
                 self.ballX += self.room.ballSpeedX * GAMESTATE_UPDATE_INTERVAL * 10
                 self.ballY += self.room.ballSpeedY * GAMESTATE_UPDATE_INTERVAL * 10
-
                 # Reset ball position if it goes past paddles
                 if self.ballX + self.room.ballRadius > self.room.width:
                     self.reset_ball()

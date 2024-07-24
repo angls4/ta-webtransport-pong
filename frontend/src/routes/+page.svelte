@@ -185,16 +185,11 @@
         $connection[protocol+"_listeners"]= null;
     }
     function handle_message(transport,message){
-        console.log("handling message", message)
-        // console.log("handling message", message)
         if(transport.register_status === "registering"){
-            // if(message[0] === 1){
-                transport.register_status = "registered";
-                console.log("register messsage received", transport);
-            // }
+            transport.register_status = "registered";
+            console.log("register messsage received", transport);
         }
         $connection[transport.protocol+"_listeners"].forEach(listener => {
-            // console.log("calling listener", listener, transport, message)
             try{
                 if(listener) listener(transport,message);
             }
@@ -203,9 +198,7 @@
             }
         });
     }
-    function handle_datagram_bytes(bytes){
-        // console.log("handling datagram bytes")
-        // to javascript object
+    function decode_json(bytes){
         const decoder = new TextDecoder("utf-8");
         const jsonString = decoder.decode(bytes);
         const object = JSON.parse(jsonString);
@@ -214,36 +207,36 @@
     function pause(ms) {
         return new Promise(resolve => setTimeout(resolve, ms));
     }
-async function handle_disconnect(transport){
-    if(!$connection.connected) return;
-    console.log("webtransport disconnected, handling...");
-    try {
-        delete $connection.wt;
-        delete $connection.ws;
-    } catch (error) {
-        console.log("error deleting transport", error);
-    }
-    $connection.connected = false;
-    await reconnect();
-}
-async function reconnect(){
-    $state = "reconnecting";
-    while (true) {
-        console.log("reconnecting...")
-        const code = await connectTransport();
-        if(code == REGISTER_FAILED) {
-            console.log("reconnected, but failed registering. returning to login page...");
-            window.location.href = "/";
+    async function handle_disconnect(transport){
+        if(!$connection.connected) return;
+        console.log("webtransport disconnected, handling...");
+        try {
+            delete $connection.wt;
+            delete $connection.ws;
+        } catch (error) {
+            console.log("error deleting transport", error);
         }
-        else if (code == REGISTER_SUCCESS) {
-            console.log("reconnected");
-            $state = "room list";
-            break;
-        }
-        console.log(`reconnecting again in ${RECONNECT_INTERVAL} sec...`)
-        await pause(RECONNECT_INTERVAL * 1000);
+        $connection.connected = false;
+        await reconnect();
     }
-}
+    async function reconnect(){
+        $state = "reconnecting";
+        while (true) {
+            console.log("reconnecting...")
+            const code = await connectTransport();
+            if(code == REGISTER_FAILED) {
+                console.log("reconnected, but failed registering. returning to login page...");
+                window.location.href = "/";
+            }
+            else if (code == REGISTER_SUCCESS) {
+                console.log("reconnected");
+                $state = "room list";
+                break;
+            }
+            console.log(`reconnecting again in ${RECONNECT_INTERVAL} sec...`)
+            await pause(RECONNECT_INTERVAL * 1000);
+        }
+    }
     function hexStringToArrayBuffer(hexString) {
         // Remove the colons
         let cleanHexString = hexString.replace(/:/g, '');
@@ -310,7 +303,7 @@ async function createWt() {
                 console.log("Done reading datagram, stop reading...", value);
                 return;
             }
-            handle_message(wt,handle_datagram_bytes(message));
+            handle_message(wt,decode_json(message));
         }
     })()
     .catch((error) => {
@@ -331,7 +324,7 @@ async function createWt() {
                 console.log("Done reading stream, stop reading...", value);
                 return;
             }
-            handle_message(wt,handle_datagram_bytes(message));
+            handle_message(wt,decode_json(message));
         }
     })()
     .catch((error) => {

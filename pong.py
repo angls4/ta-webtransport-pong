@@ -33,6 +33,7 @@ FLAG_GAME_STATE = 1
 FLAG_START_PAUSE = 2
 # CONSTANTS
 FRONTEND_PATH = "frontend/build"
+WELL_KNOWN_PATH = "public/.well-known"
 USER_ID_LENGTH = 4
 ROOM_ID_LENGTH = 5
 UPDATE_INTERVAL = 1 / 60
@@ -129,7 +130,6 @@ async def leave_room_post(request):
                         "status": "success",
                         "room": room.get_dict(),
                         "user": kicked.get_dict()
-                        # "gameState": room.gameState.getState()
                     }
                     if len(room.gameState.players) == 0:
                         rooms.pop(room.id)
@@ -206,7 +206,7 @@ def handle_received_state(connection: Connection, message: bytes):
         print("user or player not found", connection.user)
         return False
 
-def handle_start_pause(connection: Connection, stream):
+def handle_play_pause(connection: Connection, stream):
     if connection.user and connection.user.room:
         players = list(connection.user.room.gameState.players.values())
         isRunning = connection.user.room.gameState.isRunning
@@ -235,7 +235,7 @@ def handle_message(message: bytes, connection: Connection, stream = None):
     if flag is FLAG_GAME_STATE:
         return handle_received_state(connection, message)
     if flag is FLAG_START_PAUSE:
-        return handle_start_pause(connection, stream)
+        return handle_play_pause(connection, stream)
     return False
 
 def start_transmtting_state(connection: Connection):
@@ -353,6 +353,7 @@ starlette = Starlette(
         Route("/join_room", join_room_post, methods=["POST"]),
         Route("/create_room", create_room_post, methods=["POST"]),
         WebSocketRoute("/ws", ws),
+        Mount("/well-known", StaticFiles(directory=WELL_KNOWN_PATH, html=True), name="well-known"),
         Mount("/", StaticFiles(directory=FRONTEND_PATH, html=True), name="frontend"),
     ],
 )

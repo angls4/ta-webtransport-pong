@@ -65,35 +65,17 @@
         paddleY: Math.floor(roomConfig.height / 2),
     }
 
-    function initializeGame() {
-        console.log("Initializing game")
-        ctx = canvas.getContext("2d");
-        ws_ctx = ws_canvas.getContext("2d");
-        draw(ctx,gameState);
-        draw(ws_ctx,ws_gameState);
-        // console.log("Initialized game")
-        drawLoop();
-        transmitLoop();
-    }
-    export function setState(newState) {
-        try{
-            newState.players[$user.id].paddleY = localState.paddleY;
-        }
-        catch(e){
-            console.error("Error in converting state", e);
-        }
-        gameState = {...newState};
-    }
     export function setRoomConfig(newRoomConfig){
         roomConfig = {...newRoomConfig};
     }
 
     async function transmitLoop() {
-        while (true) {
+        while ($state == "game room") {
             await new Promise(resolve => setTimeout(resolve, TRANSMIT_INTERVAL));
             try{
                 if(gameState.isRunning){
                     if ($connection.connected) {
+                        // encode paddleY as 16 bit number across 2 8 bit numbers
                         let uint8Array = new Uint8Array(Uint16Array.of(localState.paddleY).buffer);
                         let resultArray = [1, uint8Array[0], uint8Array[1]];
                         const message = Uint8Array.of(...resultArray);
@@ -112,6 +94,10 @@
     }
 
     function drawLoop() {
+        if($state != "game room"){
+            cancelAnimationFrame(drawRequestId);
+            return;
+        }
         try{
             draw(ctx,gameState);
             draw(ws_ctx,ws_gameState);
@@ -131,7 +117,6 @@
         if(Object.keys(gameState?.players ?? {}).length > 0){
             // Draw left paddle
             ctx.fillRect(0, gameState.players[gameState.p0index]?.paddleY, roomConfig.paddleWidth, roomConfig.paddleHeight);
-
             // Draw right paddle
             ctx.fillRect(
                 canvas.width - roomConfig.paddleWidth,
@@ -139,7 +124,6 @@
                 roomConfig.paddleWidth,
                 roomConfig.paddleHeight
             );
-
             // Draw middle dotted line
             ctx.strokeStyle = "white";
             ctx.lineWidth = 3;
@@ -148,14 +132,13 @@
             ctx.moveTo(canvas.width / 2, 0);
             ctx.lineTo(canvas.width / 2, canvas.height);
             ctx.stroke();
-
-        // Draw scores
-        
+            // Draw scores
             ctx.fillStyle = "white";
             ctx.font = "bold 50px Arial";
             ctx.fillText(gameState.players[gameState.p0index]?.score?.toString() ?? "0", canvas.width / 2 - 70, 70, 100);
             ctx.fillText(gameState.players[gameState.p1index]?.score?.toString() ?? "0", canvas.width / 2 + 40, 70, 100);
         }
+        // Draw pause symbol
         if (!gameState.isRunning) {
             ctx.fillStyle = "white";
             ctx.font = "bold 50px Arial";
@@ -164,71 +147,76 @@
     }
 
     onMount(() => {
-        initializeGame();
+        ctx = canvas.getContext("2d");
+        ws_ctx = ws_canvas.getContext("2d");
     });
 
-    // Cleanup on component destroy
     onDestroy(() => {
         cancelAnimationFrame(drawRequestId);
     });
 
-    // Example of moving paddles (expand upon this for actual control)
     function movePaddle(event) {
-        // if(!gameState.isRunning) return;
-        // console.log("move paddle", event.clientY);
         const rect = canvas.getBoundingClientRect();
         const mouseY = event.clientY - rect.top - roomConfig.paddleHeight / 2;
         const paddleY = Math.max(1, Math.min(canvas.height - roomConfig.paddleHeight, mouseY));
-        // console.log("move paddle", paddleY, localState.paddleY)
         localState.paddleY = paddleY;
         gameState.players[$user.id].paddleY = paddleY;
     }
-    function handle_pause(){
-        console.log($connection)
+    function handle_play_pause(){
+        console.log("play/pause ing...");
         if($connection.connected)
             $connection.wt.send_reliable(Uint8Array.of(2));
         else
             console.error("Connection not ready");
     }
     function handle_leave(){
-            const data = {
-                room_id: $user.room.id,
-                user_id: $user.id
-            };
-            const url = `${PUBLIC_API}/leave_room`;
-            console.log("Leaving room...", data, url)
-            fetch(url, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json'
-                },
-                body: JSON.stringify(data)
-            })
-            .then(res => res.json())
-            .then(data => {
-                if (data.status == "success" && data.user?.id && data.room?.id) {
-                    // Handle success
-                    console.log("Leave room successful");
-                    $user = data.user;
-                    // $user.room = null;
-                    $state = "room list";
-                } else {
-                    // Handle error
-                    console.error("Failed to leave room", data);
-                }
-            })
-            .catch(error => {
-                console.error("Error in leave room request", error);
-            });
+        const data = {
+            room_id: $user.room.id,
+            user_id: $user.id
+        };
+        const url = `${PUBLIC_API}/leave_room`;
+        console.log("Leaving room...", data, url)
+        fetch(url, {
+            method: 'POST',
+            headers: {
+                'Content-Type': 'application/json'
+            },
+            body: JSON.stringify(data)
+        })
+        .then(res => res.json())
+        .then(data => {
+            if (data.status == "success" && data.user?.id && data.room?.id) {
+                console.log("Leave room successful, returning to room list...");
+                $user = data.user;
+                $state = "room list";
+            } else {
+                console.error("Failed to leave room", data);
+            }
+        })
+        .catch(error => {
+            console.error("Error in leave room request", error);
+        });
+    }
+    export function setState(newState) {
+        try{
+            newState.players[$user.id].paddleY = localState.paddleY;
         }
-
+        catch(e){
+            console.error("Error in converting state", e);
+        }
+        gameState = {...newState};
+    }
     $connection.addListener('wt',(protocol, message) => {
         setState(message);
     });
     $connection.addListener('ws',(protocol, message) => {
         ws_gameState = {...message};
     });
-
+    function startLoops() {
+        console.log("starting loops")
+        drawLoop();
+        transmitLoop();
+    }
     state.subscribe(value => {
         if(value == "game room"){
             setRoomConfig({
@@ -241,7 +229,8 @@
                 ballSpeedX: $user.room.ballSpeedX,
                 ballSpeedY: $user.room.ballSpeedY,
             });
-            setState($user.room.gameState)
+            setState($user.room.gameState);
+            startLoops();
         }
     });
     function toggle_ws(){
@@ -326,7 +315,7 @@
       style="background: black;"
     ></canvas>
     </p>
-    <button class="game_button" on:click={handle_pause}>play/pause</button>
+    <button class="game_button" on:click={handle_play_pause}>play/pause</button>
     <button class="game_button" on:click={toggle_ws}>{show_ws ? "hide" : "show"} ws</button>
     <button class="game_button" on:click={handle_leave}>leave</button>
     <p>
