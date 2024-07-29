@@ -17,7 +17,7 @@
     let ctx;
     let ws_ctx
     let drawRequestId;
-    let show_ws = false;
+    let show_ws = true;
     let initialState;
     let playerIndex = 0;
     let roomConfig = {
@@ -316,7 +316,7 @@
     ></canvas>
     </p>
     <button class="game_button" on:click={handle_play_pause}>play/pause</button>
-    <button class="game_button" on:click={toggle_ws}>{show_ws ? "hide" : "show"} ws</button>
+    <button class="game_button" on:click={toggle_ws}>{show_ws ? "hide" : "show"} WebSocket view</button>
     <button class="game_button" on:click={handle_leave}>leave</button>
     <p>
     <canvas

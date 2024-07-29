@@ -20,10 +20,6 @@
     const PUBLIC_API_WT = hostUrl
     const PUBLIC_API_WS =  hostUrl;   
     const HTTP3_CERTIFICATE_FINGERPRINT = env.PUBLIC_HTTP3_CERTIFICATE_FINGERPRINT ?? "43:6E:11:10:0C:94:51:4C:10:FD:D8:F6:46:5F:DD:A4:18:70:EC:11:44:8E:C0:4D:A4:1A:B9:69:23:C3:7B:95"
-    // const PUBLIC_API = env.PUBLIC_API
-    // const PUBLIC_API = import.meta.env.VITE_PUBLIC_API
-    // const PUBLIC_API_WT = import.meta.env.VITE_PUBLIC_API_WT
-    // const PUBLIC_API_WS = import.meta.env.VITE_PUBLIC_API_WS
     
     // variables
     let pongComponent;
@@ -453,9 +449,6 @@ input::placeholder{
 }
 </style>
 <body>
-<!-- <div>
-    <p>state = {$state}</p>
-</div> -->
 
 <div class ="cent">
 {#if $state === "login page"}
