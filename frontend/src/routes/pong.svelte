@@ -5,7 +5,7 @@
     import { json } from "@sveltejs/kit";
 
     // CONSTANTS
-    const TRANSMIT_INTERVAL = 1000 / 30;
+    const TRANSMIT_INTERVAL = 1000 / 60; // ms
     
     const hostUrl = window.location.origin;
     const PUBLIC_API = hostUrl;
