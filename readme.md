@@ -16,7 +16,7 @@ The web game is based on the classic "Pong" game and was built using Python with
 
 ## Technologies Used
 
-- [Python 3.9.11](https://www.python.org/downloads/release/python-3911/)
+- [Python 3.11](https://www.python.org/downloads/release/python-3119/)
 - [Starlette](https://www.starlette.io/)
 - [asyncio](https://docs.python.org/3/library/asyncio.html)
 - [aioquic](https://aioquic.readthedocs.io/en/latest/)
