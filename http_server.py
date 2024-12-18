@@ -141,9 +141,6 @@ class WebTransportHandler:
             self.closed = True
         self.transmit()
 
-# Handler = Union[HttpRequestHandler, WebSocketHandler, WebTransportHandler]
-
-
 class HttpServerProtocol(QuicConnectionProtocol):
     def __init__(self, *args, **kwargs) -> None:
         super().__init__(*args, **kwargs)

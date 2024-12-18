@@ -216,8 +216,12 @@ def handle_play_pause(connection: Connection, stream):
             connection.user.room.gameState.isRunning = False
         if(len(players) == 2):
             try:
-                asyncio.create_task(players[0].user.connection.send(connection.user.room.gameState.get_dict(), True, stream))
-                asyncio.create_task(players[1].user.connection.send(connection.user.room.gameState.get_dict(), True, stream))
+                message = {
+                    "state": connection.user.room.gameState.get_dict(),
+                    "timestamp": int(datetime.datetime.now().timestamp() * 1000)
+                }
+                asyncio.create_task(players[0].user.connection.send(message, True, stream))
+                asyncio.create_task(players[1].user.connection.send(message, True, stream))
             except Exception as e:
                 print(e)
         return True
@@ -247,7 +251,11 @@ async def transmitting_state(connection: Connection):
             await asyncio.sleep(UPDATE_INTERVAL)
             if connection.user and connection.user.room and connection.user.room.gameState and connection.user.room.gameState.isRunning:
                 state = connection.user.room.gameState.get_dict()
-                await connection.send(state)
+                message = {
+                    "state": state,
+                    "timestamp": int(datetime.datetime.now().timestamp() * 1000)
+                }
+                await connection.send(message)
         except Exception as e:
             print(e)
 

@@ -31,6 +31,7 @@
         ballSpeedY: 10,
     };
 
+
     let gameState = {
         ballX : Math.floor(roomConfig.width / 2),
         ballY : Math.floor(roomConfig.height / 2),
@@ -164,6 +165,9 @@
     }
     function handle_play_pause(){
         console.log("play/pause ing...");
+        // $connection.wt.transport.getStats().then(stats => {
+        //     console.log("WebTransport stats", stats);
+        // });
         if($connection.connected)
             $connection.wt.send_reliable(Uint8Array.of(2));
         else
@@ -204,14 +208,61 @@
         catch(e){
             console.error("Error in converting state", e);
         }
-        gameState = {...newState};
+        gameState = newState;
     }
+    let wt_delay = 0;
+    let ws_delay = 0;
+    let delta_delay = 0;
+    const wt_delays = [0];
+    const ws_delays = [0];
+    let wt_timestamp = Date.now();
+    let ws_timestamp = Date.now();
+
     $connection.addListener('wt',(protocol, message) => {
-        setState(message);
+        if (gameState.isRunning) {
+            wt_timestamp = message.timestamp;
+        }
+        setState({...message.state});
     });
     $connection.addListener('ws',(protocol, message) => {
-        ws_gameState = {...message};
+        if (gameState.isRunning) {
+            ws_timestamp = message.timestamp;
+        }
+        ws_gameState = {...message.state};
     });
+    setInterval(() => {
+        if (gameState.isRunning) {
+            {
+                if(wt_delays.length > 40){
+                    wt_delays.shift();
+                }
+                if(ws_delays.length > 40){
+                    ws_delays.shift();
+                }
+                const timestamp = Date.now();
+                wt_delays.push(timestamp - wt_timestamp);
+                ws_delays.push(timestamp - ws_timestamp);
+            }
+        }
+    }, 50);
+    setInterval(() => {
+        if (gameState.isRunning) {
+            wt_delay = Math.round(wt_delays.reduce((a, b) => a + b, 0) / wt_delays.length);
+            ws_delay = Math.round(ws_delays.reduce((a, b) => a + b, 0) / ws_delays.length);
+            delta_delay = ws_delay - wt_delay;
+        }
+        if (wt_delay > 3000) {
+            gameState.isRunning = false;
+            // try{
+            //     draw(ctx,gameState);
+            //     draw(ws_ctx,ws_gameState);
+            // }
+            // catch(e){
+            //     console.error("Error in draw loop", e);
+            // }
+        }
+    }, 200);
+
     function startLoops() {
         console.log("starting loops")
         drawLoop();
@@ -238,7 +289,77 @@
     }
 </script>
 
+<div style="width: 800px;" class="cent">
+    <div class="scoreboard">
+        <div class="player1">
+            <h3>{gameState?.players?.[gameState?.p0index]?.user?.name ?? "..."}</h3>
+            <p>Wins: {gameState?.players?.[gameState?.p0index]?.wins ?? 0}</p>
+        </div>
+        <h1>PONG</h1>
+        <div class="player2">
+            <h3>{gameState?.players?.[gameState?.p1index]?.user?.name ?? "..."}</h3>
+            <p>Wins: {gameState?.players?.[gameState?.p1index]?.wins ?? 0}</p>
+        </div>
+    </div>
+    <p>
+    <canvas
+      bind:this={canvas}
+      on:mousemove={movePaddle}
+      width={roomConfig.width}
+      height={roomConfig.height}
+      style="background: black;"
+    ></canvas>
+    </p>
+    <div>
+        <button class="game_button" on:click={handle_play_pause}>play/pause</button>
+        <button class="game_button" on:click={handle_leave}>leave</button>
+    </div>
+    <div class="stats-container">
+        <div class="stats-card">
+            <div>Stats</div>
+            <div class="stats-row"><div>WebTransport delay : </div><div> {wt_delay} ms</div></div>
+            <div class="stats-row"><div>WebSocket delay : </div><div> {ws_delay} ms</div></div>
+            <div class="stats-row"><div>delay difference : </div><div> {delta_delay} ms</div></div>
+        </div>
+    </div>
+    <!-- <button class="game_button" on:click={toggle_ws}>{show_ws ? "hide" : "show"} WebSocket view</button> -->
+    <p>
+    <canvas
+    hidden={!show_ws}
+      bind:this={ws_canvas}
+      width={roomConfig.width}
+      height={roomConfig.height}
+      style="background: black;"
+    ></canvas>
+    </p>
+</div>    
+
+
 <style>
+    .stats-container{
+        display: flex;
+        margin-top: 20px; 
+        justify-content: center;
+        align-items: center;
+    }
+    .stats-card{
+        display: flex;
+        flex-direction: column;
+        justify-content: center;
+        align-items: center;
+        margin-right: 20px;
+        padding: 10px;
+        border: 1px solid black;
+        border-radius: 15px;
+        box-shadow: 0 4px 6px -6px #222;
+        width: 300px;
+    }
+    .stats-row{
+        display: flex;
+        flex-direction: row;
+        justify-content: space-between;
+        width: 240px;
+    }
     .scoreboard {
         display: flex;
         justify-content: space-between;
@@ -294,37 +415,3 @@
         margin-left:5px;
     }
 </style>
-<div style="width: 800px;" class="cent">
-    <div class="scoreboard">
-        <div class="player1">
-            <h3>{gameState?.players?.[gameState?.p0index]?.user?.name ?? "..."}</h3>
-            <p>Wins: {gameState?.players?.[gameState?.p0index]?.wins ?? 0}</p>
-        </div>
-        <h1>PONG</h1>
-        <div class="player2">
-            <h3>{gameState?.players?.[gameState?.p1index]?.user?.name ?? "..."}</h3>
-            <p>Wins: {gameState?.players?.[gameState?.p1index]?.wins ?? 0}</p>
-        </div>
-    </div>
-    <p>
-    <canvas
-      bind:this={canvas}
-      on:mousemove={movePaddle}
-      width={roomConfig.width}
-      height={roomConfig.height}
-      style="background: black;"
-    ></canvas>
-    </p>
-    <button class="game_button" on:click={handle_play_pause}>play/pause</button>
-    <button class="game_button" on:click={toggle_ws}>{show_ws ? "hide" : "show"} WebSocket view</button>
-    <button class="game_button" on:click={handle_leave}>leave</button>
-    <p>
-    <canvas
-    hidden={!show_ws}
-      bind:this={ws_canvas}
-      width={roomConfig.width}
-      height={roomConfig.height}
-      style="background: black;"
-    ></canvas>
-    </p>
-</div>    
