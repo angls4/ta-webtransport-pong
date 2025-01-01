@@ -233,10 +233,10 @@
     setInterval(() => {
         if (gameState.isRunning) {
             {
-                if(wt_delays.length > 40){
+                if(wt_delays.length > 200){
                     wt_delays.shift();
                 }
-                if(ws_delays.length > 40){
+                if(ws_delays.length > 200){
                     ws_delays.shift();
                 }
                 const timestamp = Date.now();
@@ -253,13 +253,6 @@
         }
         if (wt_delay > 3000) {
             gameState.isRunning = false;
-            // try{
-            //     draw(ctx,gameState);
-            //     draw(ws_ctx,ws_gameState);
-            // }
-            // catch(e){
-            //     console.error("Error in draw loop", e);
-            // }
         }
     }, 200);
 
@@ -316,10 +309,7 @@
     </div>
     <div class="stats-container">
         <div class="stats-card">
-            <div>Stats</div>
-            <div class="stats-row"><div>WebTransport delay : </div><div> {wt_delay} ms</div></div>
-            <div class="stats-row"><div>WebSocket delay : </div><div> {ws_delay} ms</div></div>
-            <div class="stats-row"><div>delay difference : </div><div> {delta_delay} ms</div></div>
+            <div class="stats-row"><div>latency difference : </div><div> {delta_delay} ms</div></div>
         </div>
     </div>
     <!-- <button class="game_button" on:click={toggle_ws}>{show_ws ? "hide" : "show"} WebSocket view</button> -->
