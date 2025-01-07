@@ -40,8 +40,10 @@ AsgiApplication = Callable
 # HttpConnection = Union[H0Connection, H3Connection]
 
 SERVER_NAME = "aioquic/" + aioquic.__version__
-HTTP_CERT = "certs/cert.pem"
-HTTP_KEY = "certs/key.pem"
+# HTTP_CERT = "certs/cert.pem"
+# HTTP_KEY = "certs/key.pem"
+HTTP_CERT = "certs/labtiums.web.id/fullchain.pem"
+HTTP_KEY = "certs/labtiums.web.id/privkey.pem"
 HTTP3_CERT = "certs/ecdsa_cert.pem"
 HTTP3_KEY = "certs/ecdsa_key.pem"
 
