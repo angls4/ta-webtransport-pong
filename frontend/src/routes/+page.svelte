@@ -257,7 +257,7 @@
 async function createWt() {
     const url = `${PUBLIC_API_WT}/wt`
     // create connection
-    const transport = new WebTransport(url,{serverCertificateHashes:[{algorithm:"sha-256",value:hexStringToArrayBuffer(HTTP3_CERTIFICATE_FINGERPRINT)}]});
+    const transport = new WebTransport(url);
     transport.closed.then(() => {
         console.log('WebTransport closed', transport);
         handle_disconnect(transport);
