@@ -99,37 +99,57 @@
     async function connectTransport() {
         console.log("connecting transport...");
         $state = "connecting webTransport";
-        const wtSuccess = await createWt();
-        if(wtSuccess){
-            console.log("connected webtransport")
-            $state = "registering webTransport";
-            if(!await registerWt()){
-                console.log("failed to register webTransport")
-                return 1
+
+        let ret = 2;
+
+        
+        const WtPromise = async () => {
+            const wtSuccess = await createWt();
+            if(wtSuccess){
+                console.log("connected webtransport")
+                $state = "registering webTransport";
+                if(!await registerWt()){
+                    console.log("failed to register webTransport")
+                    // return 1
+                    ret = 1
+                }
             }
-        }
-        else{
-            console.log("failed to connect webtransport")
-            return 0
-        }
-        console.log("Registered webTransport");
-        $state = "connecting webSocket";
-        const wsSuccess = await createWs();
-        if(wsSuccess){
-            console.log("connected webSocket")
-            $state = "registering webSocket";
-            if(!await registerWs()){
-                console.log("failed to register webSocket")
-                return 1
+            else{
+                console.log("failed to connect webtransport")
+                // return 0
+                ret = 0
             }
+            console.log("Registered webTransport");
         }
-        else{
-            console.log("failed to connect webSocket")
-            return 0
+        
+        const WsPromise = async () => {
+            $state = "connecting webSocket";
+            const wsSuccess = await createWs();
+            if(wsSuccess){
+                console.log("connected webSocket")
+                $state = "registering webSocket";
+                if(!await registerWs()){
+                    console.log("failed to register webSocket")
+                    // return 1
+                    ret = 1
+                }
+            }
+            else{
+                console.log("failed to connect webSocket")
+                // return 0
+                ret = 0
+            }
+            // $connection.connected = true;
+            // $state = "room list";
+            // return 2
         }
-        $connection.connected = true;
-        $state = "room list";
-        return 2
+
+        await Promise.all([WtPromise(), WsPromise()]);
+        if (ret == 2){
+            $connection.connected = true;
+            $state = "room list";
+        }
+        return ret;
     }
 
     async function registerWt() {

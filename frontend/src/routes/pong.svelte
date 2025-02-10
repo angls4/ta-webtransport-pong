@@ -255,6 +255,13 @@
             gameState.isRunning = false;
         }
     }, 200);
+    // log coordinate and latency differnce every 5 seconds if not paused
+    setInterval(() => {
+        if (gameState.isRunning) {
+            console.log("latency difference : ", delta_delay, "ms");
+            console.log("ballX : ", gameState.ballX, "ballY : ", gameState.ballY);
+        }
+    }, 5000);
 
     function startLoops() {
         console.log("starting loops")
