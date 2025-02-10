@@ -260,6 +260,7 @@
         if (gameState.isRunning) {
             console.log("latency difference : ", delta_delay, "ms");
             console.log("ballX : ", gameState.ballX, "ballY : ", gameState.ballY);
+            console.log("ws ballX : ", ws_gameState.ballX, "ws ballY : ", ws_gameState.ballY)
         }
     }, 5000);
 
