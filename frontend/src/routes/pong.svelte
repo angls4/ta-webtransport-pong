@@ -261,8 +261,9 @@
             console.log("latency difference : ", delta_delay, "ms");
             console.log("ballX : ", gameState.ballX, "ballY : ", gameState.ballY);
             console.log("ws ballX : ", ws_gameState.ballX, "ws ballY : ", ws_gameState.ballY)
+            console.log("ball distance : ", Math.sqrt((gameState.ballX - ws_gameState.ballX) ** 2 + (gameState.ballY - ws_gameState.ballY) ** 2));
         }
-    }, 5000);
+    }, 1000);
 
     function startLoops() {
         console.log("starting loops")
