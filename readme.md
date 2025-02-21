@@ -1,6 +1,6 @@
 # Pong Multiplayer Online
 
-You can play the game online at [adnan.widzzz.com](https://adnan.widzzz.com).
+You can play the game online at (UNDER MAINTENANCE).
 ![image](documents/videos/overview.gif)
 
 The web game is based on the classic "Pong" game and was built using Python with technologies like Sveltekit, Starlette, Uvicorn, and asyncio. It supports both HTTP/2 and HTTP/3 protocols. A key feature of the game is its use of WebTransport for gamestate communication, instead of more traditional methods like WebSocket or UDP sockets. Additionally, the game serves as a comparison tool, allowing users to observe the differences between WebSocket and WebTransport in real-time.
